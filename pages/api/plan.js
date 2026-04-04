@@ -1,4 +1,22 @@
 // pages/api/plan.js
+
+async function fetchPexelsPhoto(query, pexelsKey, orientation = "landscape") {
+  try {
+    const res = await fetch(
+      `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=3&orientation=${orientation}`,
+      { headers: { Authorization: pexelsKey } }
+    );
+    const data = await res.json();
+    const photo = data.photos?.[0];
+    if (!photo) return null;
+    return orientation === "portrait"
+      ? photo.src.large2x || photo.src.large
+      : photo.src.large2x || photo.src.large;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
@@ -7,6 +25,8 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "API key not configured" });
+
+  const pexelsKey = process.env.PEXELS_API_KEY;
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -50,43 +70,43 @@ The JSON must follow this exact structure:
   "flights": "Direct flight info from UK — airport, airline, duration, estimated price",
   "hotel": "One sentence on best area to stay and why, with rough nightly cost",
   "tip": "One genuinely useful insider tip — specific and actionable, never generic",
-  "photoQuery": "Specific Unsplash search query for a hero shot of this destination (3-5 words)",
+  "photoQuery": "2-3 word search for a stunning cityscape or landmark of this destination",
   "storySlides": [
     {
       "type": "destination",
       "headline": "Your next trip.",
       "subline": "City, Country.",
-      "imageQuery": "Specific Unsplash query for a stunning wide shot of the destination"
+      "imageQuery": "2-3 word search for stunning wide shot of destination city"
     },
     {
       "type": "flight",
       "headline": "Direct from London.",
       "subline": "2 hours 25 minutes.",
-      "imageQuery": "airplane window seat clouds sky"
+      "imageQuery": "airplane window clouds sky"
     },
     {
       "type": "hotel",
-      "headline": "Staying in [neighbourhood name].",
+      "headline": "Staying in [neighbourhood].",
       "subline": "One evocative sentence about the area.",
-      "imageQuery": "Specific Unsplash query for the hotel neighbourhood"
+      "imageQuery": "2-3 word search for this neighbourhood or city street"
     },
     {
       "type": "activity",
       "headline": "Most spectacular Day 1 activity.",
       "subline": "One vivid sentence about this experience.",
-      "imageQuery": "Specific Unsplash query for this exact landmark or activity"
+      "imageQuery": "2-3 word search for this exact landmark or activity"
     },
     {
       "type": "activity",
       "headline": "Most spectacular Day 2 activity.",
       "subline": "One vivid sentence about this experience.",
-      "imageQuery": "Specific Unsplash query for this exact landmark or activity"
+      "imageQuery": "2-3 word search for this exact landmark or activity"
     },
     {
       "type": "activity",
       "headline": "Most spectacular Day 3 activity.",
       "subline": "One vivid sentence about this experience.",
-      "imageQuery": "Specific Unsplash query for this exact landmark or activity"
+      "imageQuery": "2-3 word search for this exact landmark or activity"
     }
   ],
   "itinerary": [
@@ -107,7 +127,7 @@ Rules:
 - All budget figures in GBP
 - Be specific with restaurant names, attraction names, neighbourhood names
 - The tip must be genuinely useful — never generic
-- All imageQuery values must be highly specific to return a beautiful relevant photo
+- imageQuery values must be 2-3 words, specific enough to return a beautiful relevant photo
 - storySlides must always have exactly 6 slides: destination, flight, hotel, then 3 activities
 - Activity slides should be the most visually spectacular things from the itinerary`,
           },
@@ -132,15 +152,25 @@ Rules:
     const clean = text.replace(/```json|```/g, "").trim();
     const trip = JSON.parse(clean);
 
-    // Hero photo
-    trip.photo = `https://source.unsplash.com/900x600/?${encodeURIComponent(trip.photoQuery || trip.destination + " travel")}`;
+    // Fetch hero photo from Pexels
+    if (pexelsKey) {
+      const heroPhoto = await fetchPexelsPhoto(trip.photoQuery || trip.destination, pexelsKey, "landscape");
+      trip.photo = heroPhoto || `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=900&q=80`;
+    } else {
+      trip.photo = `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=900&q=80`;
+    }
 
-    // Attach image URLs to each story slide
-    if (trip.storySlides) {
-      trip.storySlides = trip.storySlides.map(slide => ({
-        ...slide,
-        imageUrl: `https://source.unsplash.com/900x1600/?${encodeURIComponent(slide.imageQuery)}`,
-      }));
+    // Fetch portrait images for each story slide from Pexels
+    if (trip.storySlides && pexelsKey) {
+      trip.storySlides = await Promise.all(
+        trip.storySlides.map(async (slide) => {
+          const imageUrl = await fetchPexelsPhoto(slide.imageQuery, pexelsKey, "portrait");
+          return {
+            ...slide,
+            imageUrl: imageUrl || null,
+          };
+        })
+      );
     }
 
     return res.status(200).json({ trip });
