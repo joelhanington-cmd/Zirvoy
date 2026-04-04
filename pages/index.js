@@ -76,8 +76,8 @@ function TripStoryScreen({trip,onSkip,onLetsBook}){
         {[`${trip.duration} nights`,`${trip.travellers} travellers`,`£${fmt(trip.budgetTotal)} est.`].map(t=>(<span key={t} style={{background:"rgba(242,232,217,0.1)",border:"1px solid rgba(242,232,217,0.2)",padding:"0.3rem 0.85rem",borderRadius:20,fontSize:"0.78rem",color:C.sand,fontFamily:"'DM Sans',sans-serif"}}>{t}</span>))}
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:"0.75rem",maxWidth:320,margin:"0 auto"}}>
-        <button onClick={onLetsBook} style={{padding:"1rem 2rem",background:C.terracotta,color:C.white,border:"none",borderRadius:14,fontSize:"1rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Let's Book This Trip →</button>
-        <button onClick={onSkip} style={{padding:"0.75rem",background:"transparent",color:"rgba(242,232,217,0.4)",border:"none",fontSize:"0.85rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>View full trip plan</button>
+        <button onClick={onSkip} style={{padding:"1rem 2rem",background:C.terracotta,color:C.white,border:"none",borderRadius:14,fontSize:"1rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",width:"100%",maxWidth:320}}>View Full Trip →</button>
+        <button onClick={onLetsBook} style={{padding:"0.75rem",background:"transparent",color:"rgba(242,232,217,0.5)",border:"1px solid rgba(242,232,217,0.15)",borderRadius:12,fontSize:"0.88rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",width:"100%",maxWidth:320}}>I'm ready to book now!</button>
       </div>
     </div>
   </div>);}
