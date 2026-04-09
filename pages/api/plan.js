@@ -70,6 +70,13 @@ The JSON must follow this exact structure:
   "flights": "Direct flight info from UK — airport, airline, duration, estimated price",
   "hotel": "One sentence on best area to stay and why, with rough nightly cost",
   "tip": "One genuinely useful insider tip — specific and actionable, never generic",
+  "weather": {
+    "bestMonths": "e.g. May & June",
+    "peakSeason": "e.g. July–August",
+    "avoidMonths": "e.g. November–February (or null if no bad months)",
+    "tempRange": "e.g. 24–32°C in summer, 10–15°C in winter",
+    "insight": "One sentence on what makes the climate special or what to expect"
+  },
   "photoQuery": "2-3 word search for a stunning cityscape or landmark of this destination",
   "storySlides": [
     {
@@ -127,6 +134,7 @@ Rules:
 - All budget figures in GBP
 - Be specific with restaurant names, attraction names, neighbourhood names
 - The tip must be genuinely useful — never generic
+- weather.avoidMonths can be null if there are no genuinely bad months
 - imageQuery values must be 2-3 words, specific enough to return a beautiful relevant photo
 - storySlides must always have exactly 6 slides: destination, flight, hotel, then 3 activities
 - Activity slides should be the most visually spectacular things from the itinerary`,
