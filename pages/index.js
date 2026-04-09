@@ -438,12 +438,12 @@ function LandingPage({onCreateAccount,onLogin}){
     <div style={{minHeight:"100vh",position:"relative",overflow:"hidden",fontFamily:"'DM Sans',sans-serif",display:"flex",flexDirection:"column"}}>
       {/* Background images */}
       {photos.map((p,i)=>(
-        <div key={i} style={{position:"absolute",inset:0,opacity:i===current&&imgLoaded[i]?1:0,transition:"opacity 1.2s ease"}}>
+        <div key={i} style={{position:"absolute",inset:0,zIndex:0,opacity:i===current&&imgLoaded[i]?1:0,transition:"opacity 1.2s ease"}}>
           <img src={p.url} alt={p.destination} onLoad={()=>setImgLoaded(l=>({...l,[i]:true}))} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
         </div>
       ))}
-      {/* Fallback gradient */}
-      <div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${C.bark} 0%,${C.espresso} 100%)`}}/>
+      {/* Fallback gradient — sits behind photos */}
+      <div style={{position:"absolute",inset:0,zIndex:-1,background:`linear-gradient(135deg,${C.bark} 0%,${C.espresso} 100%)`}}/>
       {/* Dot pattern */}
       <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.5,zIndex:1}}/>
       {/* Dark overlay */}
