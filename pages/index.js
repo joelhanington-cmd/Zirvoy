@@ -254,7 +254,7 @@ function BookingScreen({trip,onBack,onDone}){
               {/* Filter 1: Room type */}
               <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.6rem"}}>Room type</p>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem",marginBottom:"1.25rem"}}>
-                {[{v:"Double room",e:"🛏"},{{v:"Twin beds",e:"🛏🛏"}},{v:"Family room",e:"👨‍👩‍👧"},{v:"Suite / upgrade",e:"✨"}].map(o=>(
+                {[{v:"Double room",e:"🛏"},{v:"Twin beds",e:"🛏🛏"},{v:"Family room",e:"👨‍👩‍👧"},{v:"Suite / upgrade",e:"✨"}].map(o=>(
                   <button key={o.v} onClick={()=>setRoomType(o.v)} style={{padding:"0.7rem",background:roomType===o.v?C.espresso:C.sandLight,color:roomType===o.v?C.sand:C.espresso,border:`1.5px solid ${roomType===o.v?C.espresso:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"0.82rem",fontWeight:500,transition:"all 0.15s"}}>{o.e} {o.v}</button>
                 ))}
               </div>
