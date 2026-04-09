@@ -58,8 +58,10 @@ function BookingScreen({trip,onBack,onDone}){
   const[hotelExtras,setHotelExtras]=useState("");
   const[hotelRecs,setHotelRecs]=useState(null);
   const[hotelLoading,setHotelLoading]=useState(false);
+  const[hotelCardIndex,setHotelCardIndex]=useState(0);
+  const[bookedHotel,setBookedHotel]=useState(null);
   const fetchHotels=async()=>{
-    setHotelLoading(true);setHotelRecs(null);
+    setHotelLoading(true);setHotelRecs(null);setHotelCardIndex(0);
     try{
       const r=await fetch("/api/hotels",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({destination:trip.destination,country:trip.country,checkin:departDate,checkout:returnDate,travellers:trip.travellers||2,roomType:roomType||"Double room",hotelStyle:hotelStyle||"Mid-range comfort",priority:hotelPriority||"Great location",extras:hotelExtras})});
       const d=await r.json();
@@ -67,6 +69,9 @@ function BookingScreen({trip,onBack,onDone}){
     }catch(e){setHotelRecs([]);}
     finally{setHotelLoading(false);}
   };
+  // Flights
+  const[flightSearchOpened,setFlightSearchOpened]=useState(false);
+  const[bookedFlight,setBookedFlight]=useState(null);
   // When to go
   const[whenType,setWhenType]=useState(null);
   const[whenInsight,setWhenInsight]=useState(null);
@@ -293,30 +298,116 @@ function BookingScreen({trip,onBack,onDone}){
 
           {hotelRecs&&!hotelLoading&&(<>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"0.75rem"}}>
-              <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:0}}>Hotels for you in {trip.destination}</p>
-              <button onClick={()=>{setHotelRecs(null);setRoomType(null);setHotelStyle(null);setHotelPriority(null);setHotelExtras("");}} style={{background:"transparent",border:"none",fontSize:"0.78rem",color:C.terracotta,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>← Refine</button>
+              <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:0}}>3 picks for {trip.destination}</p>
+              <button onClick={()=>{setHotelRecs(null);setRoomType(null);setHotelStyle(null);setHotelPriority(null);setHotelExtras("");setBookedHotel(null);}} style={{background:"transparent",border:"none",fontSize:"0.78rem",color:C.terracotta,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>← Refine</button>
             </div>
-            {hotelRecs.map((h,i)=>(
-              <div key={i} style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.25rem",marginBottom:"0.75rem",boxShadow:"0 2px 12px rgba(28,20,16,0.05)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"0.4rem"}}>
-                  <h4 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.2rem",fontWeight:600,color:C.espresso,margin:0,flex:1,paddingRight:"0.5rem"}}>{h.name}</h4>
-                  <span style={{fontSize:"0.72rem",fontWeight:600,color:C.terracotta,background:"rgba(196,98,45,0.08)",padding:"0.2rem 0.6rem",borderRadius:20,whiteSpace:"nowrap"}}>~£{h.pricePerNight}/night</span>
+
+            {/* Swipeable hotel carousel */}
+            <div style={{position:"relative",borderRadius:20,overflow:"hidden",marginBottom:"0.75rem",boxShadow:"0 4px 24px rgba(28,20,16,0.08)",border:`1px solid ${C.border}`}}>
+              {hotelRecs.map((h,i)=>(
+                <div key={i} style={{display:i===hotelCardIndex?"block":"none",background:C.white}}>
+                  {/* Header */}
+                  <div style={{background:C.espresso,padding:"1.25rem 1.25rem 1rem",position:"relative"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                      <div style={{flex:1,paddingRight:"0.5rem"}}>
+                        <p style={{fontSize:"0.62rem",fontWeight:600,color:C.terracotta,textTransform:"uppercase",letterSpacing:"0.16em",margin:"0 0 0.3rem"}}>{i+1} of {hotelRecs.length} · {h.style}</p>
+                        <h4 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.4rem",fontWeight:600,color:C.sand,margin:"0 0 0.2rem",lineHeight:1.1}}>{h.name}</h4>
+                        <p style={{fontSize:"0.75rem",color:"rgba(242,232,217,0.6)",margin:0,fontWeight:300}}>📍 {h.area}</p>
+                      </div>
+                      <div style={{textAlign:"right",flexShrink:0}}>
+                        <p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.5rem",fontWeight:600,color:C.sand,margin:0}}>£{h.pricePerNight}</p>
+                        <p style={{fontSize:"0.65rem",color:"rgba(242,232,217,0.5)",margin:0}}>per night</p>
+                      </div>
+                    </div>
+                    {/* Swipe arrows */}
+                    {hotelRecs.length>1&&(
+                      <div style={{display:"flex",gap:4,marginTop:"0.85rem"}}>
+                        <button onClick={()=>setHotelCardIndex(i=>Math.max(0,i-1))} disabled={hotelCardIndex===0}
+                          style={{flex:1,padding:"0.4rem",background:"rgba(242,232,217,0.1)",border:"none",color:C.sand,borderRadius:8,cursor:"pointer",fontSize:"0.85rem",opacity:hotelCardIndex===0?0.3:1}}>‹ Prev</button>
+                        <button onClick={()=>setHotelCardIndex(i=>Math.min(hotelRecs.length-1,i+1))} disabled={hotelCardIndex===hotelRecs.length-1}
+                          style={{flex:1,padding:"0.4rem",background:"rgba(242,232,217,0.1)",border:"none",color:C.sand,borderRadius:8,cursor:"pointer",fontSize:"0.85rem",opacity:hotelCardIndex===hotelRecs.length-1?0.3:1}}>Next ›</button>
+                      </div>
+                    )}
+                  </div>
+                  {/* Info */}
+                  <div style={{padding:"1.1rem 1.25rem"}}>
+                    <p style={{fontSize:"0.86rem",color:C.ink,lineHeight:1.65,fontWeight:300,margin:"0 0 0.6rem"}}>{h.why}</p>
+                    <div style={{background:C.sandLight,borderRadius:8,padding:"0.6rem 0.75rem",marginBottom:"1rem",borderLeft:`2.5px solid ${C.terracotta}`}}>
+                      <p style={{fontSize:"0.78rem",color:C.muted,margin:0,fontWeight:300}}>✨ {h.highlight}</p>
+                    </div>
+                    {bookedHotel?.name===h.name?(
+                      <div style={{background:C.espresso,borderRadius:10,padding:"0.85rem",display:"flex",alignItems:"center",gap:"0.75rem"}}>
+                        <span style={{fontSize:"1.1rem"}}>✅</span>
+                        <div><p style={{fontSize:"0.85rem",fontWeight:600,color:C.sand,margin:0}}>Hotel saved to your trip!</p><p style={{fontSize:"0.72rem",color:"rgba(242,232,217,0.6)",margin:0,fontWeight:300}}>{h.name}</p></div>
+                      </div>
+                    ):(
+                      <div style={{display:"flex",gap:"0.5rem"}}>
+                        <a href={`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(h.bookingSearch+", "+trip.destination)}&checkin=${departDate}&checkout=${returnDate}&group_adults=${trip.travellers||2}&no_rooms=1&lang=en-gb&currency=GBP`} target="_blank" rel="noopener noreferrer"
+                          style={{flex:2,display:"block",padding:"0.85rem",background:"#003580",color:C.white,borderRadius:10,fontSize:"0.82rem",fontWeight:600,textAlign:"center",textDecoration:"none",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box"}}>
+                          Check on Booking.com ↗
+                        </a>
+                        <button onClick={()=>setBookedHotel({name:h.name,area:h.area,pricePerNight:h.pricePerNight,checkin:departDate,checkout:returnDate})}
+                          style={{flex:1,padding:"0.85rem",background:C.espresso,color:C.sand,border:"none",borderRadius:10,fontSize:"0.78rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
+                          ✓ Booked it
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <p style={{fontSize:"0.75rem",color:C.muted,margin:"0 0 0.6rem",fontWeight:300}}>📍 {h.area} · {h.style}</p>
-                <p style={{fontSize:"0.85rem",color:C.ink,lineHeight:1.6,fontWeight:300,margin:"0 0 0.5rem"}}>{h.why}</p>
-                <div style={{background:C.sandLight,borderRadius:8,padding:"0.6rem 0.75rem",marginBottom:"1rem",borderLeft:`2.5px solid ${C.terracotta}`}}>
-                  <p style={{fontSize:"0.78rem",color:C.muted,margin:0,fontWeight:300}}>✨ {h.highlight}</p>
-                </div>
-                <a href={`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(h.bookingSearch+", "+trip.destination)}&checkin=${departDate}&checkout=${returnDate}&group_adults=${trip.travellers||2}&no_rooms=1&lang=en-gb&currency=GBP`} target="_blank" rel="noopener noreferrer"
-                  style={{display:"block",width:"100%",padding:"0.85rem",background:C.espresso,color:C.sand,borderRadius:10,fontSize:"0.85rem",fontWeight:600,textAlign:"center",textDecoration:"none",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box"}}>
-                  Check availability on Booking.com →
-                </a>
-              </div>
-            ))}
-            <button onClick={()=>setStep(s=>s+1)} style={{width:"100%",padding:"0.85rem",background:"transparent",color:C.terracotta,border:`1.5px solid ${C.terracotta}`,borderRadius:12,fontSize:"0.88rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"0.25rem"}}>I've found my hotel →</button>
+              ))}
+            </div>
+
+            {bookedHotel&&<button onClick={()=>setStep(s=>s+1)} style={{width:"100%",padding:"0.85rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.88rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.5rem"}}>Next: book activities →</button>}
+            <button onClick={()=>setStep(s=>s+1)} style={{width:"100%",padding:"0.85rem",background:"transparent",color:C.terracotta,border:`1.5px solid ${C.terracotta}`,borderRadius:12,fontSize:"0.88rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>I've found my hotel →</button>
           </>)}
         </div>
       ):(
+      /* Flights step */
+      step===0?(
+      <div style={{background:C.white,borderRadius:20,border:`1px solid ${C.border}`,padding:"1.5rem",marginBottom:"1rem",boxShadow:"0 4px 24px rgba(28,20,16,0.07)"}}>
+        <div style={{fontSize:"2rem",marginBottom:"0.75rem"}}>✈</div>
+        <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.5rem",fontWeight:600,color:C.espresso,margin:"0 0 0.5rem"}}>Find your flights</h3>
+        <p style={{fontSize:"0.88rem",color:C.ink,lineHeight:1.65,fontWeight:300,margin:"0 0 0.75rem"}}>{trip.flights}</p>
+        <div style={{background:C.sandLight,borderRadius:12,padding:"0.85rem 1rem",marginBottom:"1.25rem",borderLeft:`3px solid ${C.terracotta}`}}>
+          <p style={{fontSize:"0.78rem",color:C.muted,margin:0,lineHeight:1.6,fontWeight:300}}>Skyscanner opens in a new tab — your Zirvoy booking flow stays open here so you can come straight back.</p>
+        </div>
+        {!flightSearchOpened?(
+          <a href={buildSkyscannerUrl()} target="_blank" rel="noopener noreferrer"
+            onClick={()=>setFlightSearchOpened(true)}
+            style={{display:"block",width:"100%",padding:"1rem",background:C.terracotta,color:C.white,borderRadius:12,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"center",textDecoration:"none",boxSizing:"border-box",marginBottom:"0.75rem"}}>
+            Search Flights on Skyscanner ↗
+          </a>
+        ):(
+          <div style={{marginBottom:"0.75rem"}}>
+            <div style={{background:"rgba(196,98,45,0.08)",border:`1.5px solid ${C.terracotta}`,borderRadius:12,padding:"1rem",marginBottom:"0.75rem",textAlign:"center"}}>
+              <p style={{fontSize:"0.78rem",color:C.terracotta,fontWeight:600,margin:"0 0 0.25rem"}}>Skyscanner is open in another tab ↗</p>
+              <p style={{fontSize:"0.75rem",color:C.muted,margin:0,fontWeight:300}}>Come back here once you've found your flight</p>
+            </div>
+            <a href={buildSkyscannerUrl()} target="_blank" rel="noopener noreferrer"
+              style={{display:"block",width:"100%",padding:"0.75rem",background:"transparent",color:C.terracotta,border:`1px solid ${C.terracotta}`,borderRadius:10,fontSize:"0.82rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"center",textDecoration:"none",boxSizing:"border-box",marginBottom:"0.75rem"}}>
+              Re-open Skyscanner ↗
+            </a>
+          </div>
+        )}
+        {flightSearchOpened&&!bookedFlight&&(
+          <button onClick={()=>setBookedFlight({confirmed:true,destination:trip.destination,depart:departDate,return:returnDate})}
+            style={{width:"100%",padding:"1rem",background:C.espresso,color:C.sand,border:"none",borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.75rem"}}>
+            ✓ I've booked my flights — save to trip
+          </button>
+        )}
+        {bookedFlight&&(
+          <div style={{background:C.espresso,borderRadius:12,padding:"1rem",marginBottom:"0.75rem",display:"flex",alignItems:"center",gap:"0.75rem"}}>
+            <span style={{fontSize:"1.2rem"}}>✅</span>
+            <div><p style={{fontSize:"0.85rem",fontWeight:600,color:C.sand,margin:0}}>Flights booked!</p><p style={{fontSize:"0.75rem",color:"rgba(242,232,217,0.6)",margin:0,fontWeight:300}}>{departDate} → {returnDate} · saved to your trip</p></div>
+          </div>
+        )}
+        <button onClick={()=>setStep(1)}
+          style={{width:"100%",padding:"0.85rem",background:"transparent",color:C.terracotta,border:`1.5px solid ${C.terracotta}`,borderRadius:12,fontSize:"0.88rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
+          {bookedFlight?"Next: find your hotel →":"I've sorted my flights →"}
+        </button>
+      </div>
+      ):(
+      /* Activities step */
       <div style={{background:C.white,borderRadius:20,border:`1px solid ${C.border}`,padding:"1.5rem",marginBottom:"1rem",boxShadow:"0 4px 24px rgba(28,20,16,0.07)"}}>
         <div style={{fontSize:"2rem",marginBottom:"0.75rem"}}>{current.icon}</div>
         <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.5rem",fontWeight:600,color:C.espresso,margin:"0 0 0.5rem"}}>{current.title}</h3>
@@ -328,11 +419,11 @@ function BookingScreen({trip,onBack,onDone}){
           style={{display:"block",width:"100%",padding:"1rem",background:current.btnColor,color:C.white,border:"none",borderRadius:12,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"center",textDecoration:"none",boxSizing:"border-box",marginBottom:"0.75rem"}}>
           {current.btnLabel}
         </a>
-        <button onClick={()=>step<steps.length-1?setStep(s=>s+1):onDone()}
+        <button onClick={onDone}
           style={{width:"100%",padding:"0.85rem",background:"transparent",color:C.terracotta,border:`1.5px solid ${C.terracotta}`,borderRadius:12,fontSize:"0.88rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
           {current.nextLabel}
         </button>
-      </div>)}
+      </div>))}
 
       {/* Steps overview */}
       <div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.1rem 1.25rem",boxShadow:"0 2px 12px rgba(28,20,16,0.05)"}}>
