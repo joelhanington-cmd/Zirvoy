@@ -51,6 +51,22 @@ function BookingScreen({trip,onBack,onDone}){
   const[departDate,setDepartDate]=useState(defaultDepart);
   const[returnDate,setReturnDate]=useState(()=>defaultReturn(defaultDepart()));
   const handleDepartChange=(v)=>{setDepartDate(v);setReturnDate(defaultReturn(v));};
+  // Hotel finder
+  const[hotelStyle,setHotelStyle]=useState(null);
+  const[hotelPriority,setHotelPriority]=useState(null);
+  const[roomType,setRoomType]=useState(null);
+  const[hotelExtras,setHotelExtras]=useState("");
+  const[hotelRecs,setHotelRecs]=useState(null);
+  const[hotelLoading,setHotelLoading]=useState(false);
+  const fetchHotels=async()=>{
+    setHotelLoading(true);setHotelRecs(null);
+    try{
+      const r=await fetch("/api/hotels",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({destination:trip.destination,country:trip.country,checkin:departDate,checkout:returnDate,travellers:trip.travellers||2,roomType:roomType||"Double room",hotelStyle:hotelStyle||"Mid-range comfort",priority:hotelPriority||"Great location",extras:hotelExtras})});
+      const d=await r.json();
+      setHotelRecs(d.hotels||[]);
+    }catch(e){setHotelRecs([]);}
+    finally{setHotelLoading(false);}
+  };
   // When to go
   const[whenType,setWhenType]=useState(null);
   const[whenInsight,setWhenInsight]=useState(null);
@@ -226,29 +242,97 @@ function BookingScreen({trip,onBack,onDone}){
     </div>
 
     <div style={{padding:"1.5rem",maxWidth:640,margin:"0 auto"}}>
-      {/* Step card */}
+      {/* Hotel finder step */}
+      {step===1?(
+        <div style={{marginBottom:"1rem"}}>
+          {!hotelRecs&&!hotelLoading&&(<>
+            <div style={{background:C.white,borderRadius:20,border:`1px solid ${C.border}`,padding:"1.5rem",marginBottom:"0.75rem",boxShadow:"0 4px 24px rgba(28,20,16,0.07)"}}>
+              <div style={{fontSize:"2rem",marginBottom:"0.75rem"}}>🏨</div>
+              <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.5rem",fontWeight:600,color:C.espresso,margin:"0 0 0.35rem"}}>Find your perfect hotel</h3>
+              <p style={{fontSize:"0.85rem",color:C.muted,margin:"0 0 1.5rem",fontWeight:300,lineHeight:1.6}}>Tell us what matters most and we'll find the right options in {trip.destination}.</p>
+
+              {/* Filter 1: Room type */}
+              <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.6rem"}}>Room type</p>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem",marginBottom:"1.25rem"}}>
+                {[{v:"Double room",e:"🛏"},{{v:"Twin beds",e:"🛏🛏"}},{v:"Family room",e:"👨‍👩‍👧"},{v:"Suite / upgrade",e:"✨"}].map(o=>(
+                  <button key={o.v} onClick={()=>setRoomType(o.v)} style={{padding:"0.7rem",background:roomType===o.v?C.espresso:C.sandLight,color:roomType===o.v?C.sand:C.espresso,border:`1.5px solid ${roomType===o.v?C.espresso:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"0.82rem",fontWeight:500,transition:"all 0.15s"}}>{o.e} {o.v}</button>
+                ))}
+              </div>
+
+              {/* Filter 2: Hotel style */}
+              <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.6rem"}}>Hotel style</p>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem",marginBottom:"1.25rem"}}>
+                {[{v:"Boutique & design",e:"🎨"},{v:"Luxury 5-star",e:"💎"},{v:"Mid-range comfort",e:"👌"},{v:"Budget & clean",e:"💸"}].map(o=>(
+                  <button key={o.v} onClick={()=>setHotelStyle(o.v)} style={{padding:"0.7rem",background:hotelStyle===o.v?C.espresso:C.sandLight,color:hotelStyle===o.v?C.sand:C.espresso,border:`1.5px solid ${hotelStyle===o.v?C.espresso:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"0.82rem",fontWeight:500,transition:"all 0.15s"}}>{o.e} {o.v}</button>
+                ))}
+              </div>
+
+              {/* Filter 3: Top priority */}
+              <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.6rem"}}>What matters most?</p>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem",marginBottom:"1.25rem"}}>
+                {[{v:"Pool & outdoor",e:"🏊"},{v:"City-centre location",e:"📍"},{v:"Beach access",e:"🏖"},{v:"Spa & wellness",e:"🧖"}].map(o=>(
+                  <button key={o.v} onClick={()=>setHotelPriority(o.v)} style={{padding:"0.7rem",background:hotelPriority===o.v?C.espresso:C.sandLight,color:hotelPriority===o.v?C.sand:C.espresso,border:`1.5px solid ${hotelPriority===o.v?C.espresso:C.border}`,borderRadius:10,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"0.82rem",fontWeight:500,transition:"all 0.15s"}}>{o.e} {o.v}</button>
+                ))}
+              </div>
+
+              {/* Extras */}
+              <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.6rem"}}>Anything else?</p>
+              <textarea value={hotelExtras} onChange={e=>setHotelExtras(e.target.value)} placeholder="e.g. quiet street, rooftop bar, pet-friendly, parking, sea view…" rows={2} style={{width:"100%",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:10,padding:"0.85rem",fontSize:"0.88rem",color:C.ink,resize:"none",outline:"none",lineHeight:1.6,fontFamily:"'DM Sans',sans-serif",marginBottom:"1rem"}}/>
+
+              <button onClick={fetchHotels} disabled={!roomType||!hotelStyle||!hotelPriority} style={{width:"100%",padding:"1rem",background:roomType&&hotelStyle&&hotelPriority?C.terracotta:C.parchment,color:roomType&&hotelStyle&&hotelPriority?C.white:C.muted,border:"none",borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:roomType&&hotelStyle&&hotelPriority?"pointer":"default",fontFamily:"'DM Sans',sans-serif"}}>Find My Hotel in {trip.destination} →</button>
+            </div>
+          </>)}
+
+          {hotelLoading&&(
+            <div style={{background:C.white,borderRadius:20,border:`1px solid ${C.border}`,padding:"2.5rem 1.5rem",textAlign:"center",boxShadow:"0 4px 24px rgba(28,20,16,0.07)"}}>
+              <div style={{animation:"pulse 2s ease-in-out infinite",marginBottom:"1rem"}}><ZirvoyMark size={36} color={C.terracotta}/></div>
+              <p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.2rem",color:C.espresso,margin:"0 0 0.35rem"}}>Finding the perfect hotels…</p>
+              <p style={{fontSize:"0.82rem",color:C.muted,margin:0,fontWeight:300}}>Searching {trip.destination} based on your preferences</p>
+            </div>
+          )}
+
+          {hotelRecs&&!hotelLoading&&(<>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"0.75rem"}}>
+              <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:0}}>Hotels for you in {trip.destination}</p>
+              <button onClick={()=>{setHotelRecs(null);setRoomType(null);setHotelStyle(null);setHotelPriority(null);setHotelExtras("");}} style={{background:"transparent",border:"none",fontSize:"0.78rem",color:C.terracotta,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>← Refine</button>
+            </div>
+            {hotelRecs.map((h,i)=>(
+              <div key={i} style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.25rem",marginBottom:"0.75rem",boxShadow:"0 2px 12px rgba(28,20,16,0.05)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"0.4rem"}}>
+                  <h4 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.2rem",fontWeight:600,color:C.espresso,margin:0,flex:1,paddingRight:"0.5rem"}}>{h.name}</h4>
+                  <span style={{fontSize:"0.72rem",fontWeight:600,color:C.terracotta,background:"rgba(196,98,45,0.08)",padding:"0.2rem 0.6rem",borderRadius:20,whiteSpace:"nowrap"}}>~£{h.pricePerNight}/night</span>
+                </div>
+                <p style={{fontSize:"0.75rem",color:C.muted,margin:"0 0 0.6rem",fontWeight:300}}>📍 {h.area} · {h.style}</p>
+                <p style={{fontSize:"0.85rem",color:C.ink,lineHeight:1.6,fontWeight:300,margin:"0 0 0.5rem"}}>{h.why}</p>
+                <div style={{background:C.sandLight,borderRadius:8,padding:"0.6rem 0.75rem",marginBottom:"1rem",borderLeft:`2.5px solid ${C.terracotta}`}}>
+                  <p style={{fontSize:"0.78rem",color:C.muted,margin:0,fontWeight:300}}>✨ {h.highlight}</p>
+                </div>
+                <a href={`https://www.booking.com/searchresults.html?ss=${encodeURIComponent(h.bookingSearch+", "+trip.destination)}&checkin=${departDate}&checkout=${returnDate}&group_adults=${trip.travellers||2}&no_rooms=1&lang=en-gb&currency=GBP`} target="_blank" rel="noopener noreferrer"
+                  style={{display:"block",width:"100%",padding:"0.85rem",background:C.espresso,color:C.sand,borderRadius:10,fontSize:"0.85rem",fontWeight:600,textAlign:"center",textDecoration:"none",fontFamily:"'DM Sans',sans-serif",boxSizing:"border-box"}}>
+                  Check availability on Booking.com →
+                </a>
+              </div>
+            ))}
+            <button onClick={()=>setStep(s=>s+1)} style={{width:"100%",padding:"0.85rem",background:"transparent",color:C.terracotta,border:`1.5px solid ${C.terracotta}`,borderRadius:12,fontSize:"0.88rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"0.25rem"}}>I've found my hotel →</button>
+          </>)}
+        </div>
+      ):(
       <div style={{background:C.white,borderRadius:20,border:`1px solid ${C.border}`,padding:"1.5rem",marginBottom:"1rem",boxShadow:"0 4px 24px rgba(28,20,16,0.07)"}}>
         <div style={{fontSize:"2rem",marginBottom:"0.75rem"}}>{current.icon}</div>
         <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.5rem",fontWeight:600,color:C.espresso,margin:"0 0 0.5rem"}}>{current.title}</h3>
         <p style={{fontSize:"0.88rem",color:C.ink,lineHeight:1.65,fontWeight:300,margin:"0 0 1.25rem"}}>{current.description}</p>
-
-        {/* Tip box */}
         <div style={{background:C.sandLight,borderRadius:12,padding:"0.85rem 1rem",marginBottom:"1.25rem",borderLeft:`3px solid ${C.terracotta}`}}>
           <p style={{fontSize:"0.78rem",color:C.muted,margin:0,lineHeight:1.6,fontWeight:300}}>{current.tip}</p>
         </div>
-
-        {/* Main CTA */}
         <a href={current.btnUrl} target="_blank" rel="noopener noreferrer"
           style={{display:"block",width:"100%",padding:"1rem",background:current.btnColor,color:C.white,border:"none",borderRadius:12,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"center",textDecoration:"none",boxSizing:"border-box",marginBottom:"0.75rem"}}>
           {current.btnLabel}
         </a>
-
-        {/* Next step */}
         <button onClick={()=>step<steps.length-1?setStep(s=>s+1):onDone()}
           style={{width:"100%",padding:"0.85rem",background:"transparent",color:C.terracotta,border:`1.5px solid ${C.terracotta}`,borderRadius:12,fontSize:"0.88rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
           {current.nextLabel}
         </button>
-      </div>
+      </div>)}
 
       {/* Steps overview */}
       <div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.1rem 1.25rem",boxShadow:"0 2px 12px rgba(28,20,16,0.05)"}}>
