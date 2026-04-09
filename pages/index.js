@@ -444,10 +444,8 @@ function LandingPage({onCreateAccount,onLogin}){
       ))}
       {/* Fallback gradient — sits behind photos */}
       <div style={{position:"absolute",inset:0,zIndex:-1,background:`linear-gradient(135deg,${C.bark} 0%,${C.espresso} 100%)`}}/>
-      {/* Dot pattern */}
-      <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.5,zIndex:1}}/>
-      {/* Dark overlay */}
-      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(28,20,16,0.25) 0%,rgba(28,20,16,0.45) 40%,rgba(28,20,16,0.93) 100%)",zIndex:2}}/>
+      {/* Dark overlay — heavier at bottom to keep text readable on any image */}
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(28,20,16,0.35) 0%,rgba(28,20,16,0.5) 35%,rgba(28,20,16,0.97) 100%)",zIndex:1}}/>
 
       {/* Content */}
       <div style={{position:"relative",zIndex:3,flex:1,display:"flex",flexDirection:"column",padding:"3rem 1.5rem 2.5rem",maxWidth:520,margin:"0 auto",width:"100%"}}>
