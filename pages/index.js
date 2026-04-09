@@ -170,6 +170,79 @@ function MyTripsScreen({trips,onTripClick,onPlanNew}){return(<div style={{minHei
 
 function AccountScreen({profile,onSignOut}){return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif",paddingBottom:80}}><div style={{background:C.espresso,padding:"3rem 1.5rem 2.5rem",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/><div style={{position:"relative"}}><ZirvoyLogo light/><div style={{marginTop:"1.5rem",display:"flex",alignItems:"center",gap:"1rem"}}><div style={{width:52,height:52,borderRadius:"50%",background:"rgba(196,98,45,0.2)",border:`1.5px solid ${C.terracotta}`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.4rem",fontWeight:600,color:C.sand}}>{(profile?.first_name?.[0]||"Z").toUpperCase()}</span></div><div><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.4rem",fontWeight:600,color:C.sand,margin:0}}>{profile?.first_name} {profile?.last_name}</p><p style={{fontSize:"0.8rem",color:"rgba(242,232,217,0.5)",margin:"0.1rem 0 0",fontWeight:300}}>{profile?.email}</p></div></div></div></div><div style={{padding:"1.5rem"}}><div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.25rem",marginBottom:"1rem",boxShadow:"0 2px 12px rgba(28,20,16,0.05)"}}><p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 1rem"}}>Your Details</p>{[["Home Airport",profile?.home_airport||"Not set"],["Nationality",profile?.nationality||"Not set"],["Date of Birth",profile?.date_of_birth||"Not set"]].map(([label,val])=>(<div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:"0.85rem",marginBottom:"0.85rem",borderBottom:`1px solid ${C.parchment}`}}><span style={{fontSize:"0.85rem",color:C.muted}}>{label}</span><span style={{fontSize:"0.85rem",color:C.espresso,fontWeight:500}}>{val}</span></div>))}<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"0.85rem",color:C.muted}}>Passport</span><span style={{fontSize:"0.85rem",color:profile?.passport_number?C.espresso:C.muted,fontWeight:profile?.passport_number?500:300}}>{profile?.passport_number?"••••••••••":"Not added"}</span></div></div>{!profile?.passport_number&&(<div style={{background:C.parchment,borderRadius:14,padding:"1rem 1.1rem",marginBottom:"1rem",border:`1px solid ${C.border}`}}><p style={{fontSize:"0.8rem",fontWeight:600,color:C.espresso,margin:"0 0 0.25rem"}}>💡 Speed up booking</p><p style={{fontSize:"0.78rem",color:C.muted,margin:0,lineHeight:1.5,fontWeight:300}}>Add your passport details and we'll pre-fill them when you book.</p></div>)}<button onClick={onSignOut} style={{width:"100%",padding:"1rem",background:"transparent",color:"#c0392b",border:"1.5px solid #c0392b",borderRadius:14,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"0.5rem"}}>Sign Out</button></div></div>);}
 
+function LandingPage({onCreateAccount,onLogin}){
+  const[photos,setPhotos]=useState([]);
+  const[current,setCurrent]=useState(0);
+  const[imgLoaded,setImgLoaded]=useState({});
+
+  useEffect(()=>{
+    fetch("/api/destinations").then(r=>r.json()).then(d=>{
+      if(d.photos?.length)setPhotos(d.photos);
+    }).catch(()=>{});
+  },[]);
+
+  useEffect(()=>{
+    if(!photos.length)return;
+    const t=setInterval(()=>setCurrent(c=>(c+1)%photos.length),5000);
+    return()=>clearInterval(t);
+  },[photos.length]);
+
+  const photo=photos[current];
+
+  return(
+    <div style={{minHeight:"100vh",position:"relative",overflow:"hidden",fontFamily:"'DM Sans',sans-serif",display:"flex",flexDirection:"column"}}>
+      {/* Background images */}
+      {photos.map((p,i)=>(
+        <div key={i} style={{position:"absolute",inset:0,opacity:i===current&&imgLoaded[i]?1:0,transition:"opacity 1.2s ease"}}>
+          <img src={p.url} alt={p.destination} onLoad={()=>setImgLoaded(l=>({...l,[i]:true}))} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+        </div>
+      ))}
+      {/* Fallback gradient */}
+      <div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${C.bark} 0%,${C.espresso} 100%)`}}/>
+      {/* Dot pattern */}
+      <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.5,zIndex:1}}/>
+      {/* Dark overlay */}
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(28,20,16,0.25) 0%,rgba(28,20,16,0.45) 40%,rgba(28,20,16,0.93) 100%)",zIndex:2}}/>
+
+      {/* Content */}
+      <div style={{position:"relative",zIndex:3,flex:1,display:"flex",flexDirection:"column",padding:"3rem 1.5rem 2.5rem",maxWidth:520,margin:"0 auto",width:"100%"}}>
+        <div><ZirvoyLogo light/></div>
+
+        <div style={{marginTop:"auto",paddingTop:"3rem"}}>
+          {photo&&(
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:"1rem"}}>
+              <div style={{width:6,height:6,borderRadius:"50%",background:C.terracotta}}/>
+              <span style={{fontSize:"0.7rem",fontWeight:600,color:C.terra2,letterSpacing:"0.2em",textTransform:"uppercase"}}>{photo.destination}</span>
+            </div>
+          )}
+          <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"clamp(2.8rem,9vw,4rem)",fontWeight:600,color:C.sand,margin:"0 0 1.1rem",lineHeight:1.05}}>
+            Your world.<br/>Planned<br/>instantly.
+          </h1>
+          <p style={{fontSize:"1rem",color:"rgba(242,232,217,0.65)",margin:"0 0 1.75rem",lineHeight:1.75,fontWeight:300,maxWidth:360}}>
+            Tell Zirvoy your dream trip in plain English. Get a full AI-generated travel plan — flights, hotel, budget, itinerary — in seconds.
+          </p>
+          <div style={{display:"flex",flexWrap:"wrap",gap:"0.5rem",marginBottom:"2rem"}}>
+            {["AI-powered","Any budget","Any destination","Free to use"].map(f=>(
+              <span key={f} style={{background:"rgba(242,232,217,0.1)",border:"1px solid rgba(242,232,217,0.2)",color:C.sand,fontSize:"0.75rem",padding:"0.3rem 0.85rem",borderRadius:20,fontWeight:300}}>{f}</span>
+            ))}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
+            <Btn onClick={onCreateAccount} variant="primary">Start Planning Free →</Btn>
+            <Btn onClick={onLogin} variant="outline">Log In</Btn>
+          </div>
+          {photos.length>1&&(
+            <div style={{display:"flex",gap:5,justifyContent:"center",marginTop:"1.75rem"}}>
+              {photos.map((_,i)=>(
+                <div key={i} onClick={()=>setCurrent(i)} style={{width:i===current?20:5,height:5,borderRadius:3,background:i===current?C.terracotta:"rgba(242,232,217,0.3)",transition:"all 0.4s",cursor:"pointer"}}/>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SplashScreen({onCreateAccount,onLogin}){return(<div style={{minHeight:"100vh",background:C.espresso,display:"flex",flexDirection:"column",fontFamily:"'DM Sans',sans-serif",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",top:-100,right:-100,width:400,height:400,borderRadius:"50%",border:"1px solid rgba(196,98,45,0.12)"}}/><div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/><div style={{position:"relative",flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"2rem"}}><div style={{animation:"pulse 3s ease-in-out infinite",marginBottom:"2rem"}}><ZirvoyMark size={72} color={C.terracotta}/></div><h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"3.5rem",fontWeight:600,color:C.sand,margin:"0 0 0.5rem",letterSpacing:"0.14em",textTransform:"uppercase",textAlign:"center"}}>Zirvoy</h1><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.15rem",fontStyle:"italic",color:C.terra2,margin:"0 0 4rem",textAlign:"center"}}>Your world. Planned instantly.</p><div style={{width:"100%",maxWidth:380,display:"flex",flexDirection:"column",gap:"0.75rem"}}><Btn onClick={onCreateAccount} variant="primary">Create Account</Btn><Btn onClick={onLogin} variant="outline">Log In</Btn></div></div><p style={{position:"relative",textAlign:"center",fontFamily:"'DM Sans',sans-serif",fontSize:"0.7rem",color:"rgba(242,232,217,0.3)",padding:"1.5rem"}}>Free to use · AI-powered · Your data is secure</p></div>);}
 
 function SignUpScreen({onSuccess,onLogin}){const[step,setStep]=useState(1);const[loading,setLoading]=useState(false);const[error,setError]=useState(null);const[form,setForm]=useState({firstName:"",lastName:"",email:"",password:"",dateOfBirth:"",nationality:"",homeAirport:"",passportNumber:"",passportExpiry:""});const set=(k)=>(e)=>setForm(f=>({...f,[k]:e.target.value}));const setVal=(k)=>(v)=>setForm(f=>({...f,[k]:v}));const s1v=form.firstName&&form.lastName&&form.email&&form.password.length>=6;const s2v=form.homeAirport;const handleSignUp=async()=>{setLoading(true);setError(null);try{const{data,error:ae}=await supabase.auth.signUp({email:form.email,password:form.password});if(ae)throw ae;if(data.user){const{error:profErr}=await supabase.from("profiles").insert({id:data.user.id,first_name:form.firstName,last_name:form.lastName,email:form.email,home_airport:form.homeAirport,date_of_birth:form.dateOfBirth||null,nationality:form.nationality||null,passport_number:form.passportNumber||null,passport_expiry:form.passportExpiry||null});if(profErr)throw profErr;}onSuccess(data.user);}catch(e){setError(e.message);}finally{setLoading(false);}};const titles=["Create your account","About you","Speed up bookings"];const subs=["Start planning in seconds","Helps us personalise your trips","Optional — save time when booking"];return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif"}}><div style={{background:C.espresso,padding:"2rem 1.5rem 2.5rem",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/><div style={{position:"relative"}}><ZirvoyLogo light/><h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"2rem",fontWeight:600,color:C.sand,margin:"1.25rem 0 0.35rem",lineHeight:1.2}}>{titles[step-1]}</h2><p style={{fontSize:"0.85rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>{subs[step-1]}</p><div style={{display:"flex",gap:6,marginTop:"1.25rem"}}>{[1,2,3].map(i=><div key={i} style={{width:i===step?24:6,height:6,borderRadius:3,background:i<=step?C.terracotta:"rgba(242,232,217,0.2)",transition:"all 0.3s"}}/>)}</div></div></div><div style={{padding:"1.75rem 1.5rem",maxWidth:480,margin:"0 auto"}}>{error&&<div style={{background:"#fde8e8",border:"1px solid #e07070",borderRadius:10,padding:"0.75rem 1rem",marginBottom:"1rem",fontSize:"0.85rem",color:"#c0392b"}}>{error}</div>}{step===1&&<><Input label="First Name" value={form.firstName} onChange={set("firstName")} placeholder="John"/><Input label="Last Name" value={form.lastName} onChange={set("lastName")} placeholder="Smith"/><Input label="Email" type="email" value={form.email} onChange={set("email")} placeholder="john@example.com"/><Input label="Password" type="password" value={form.password} onChange={set("password")} placeholder="Min. 6 characters"/><Btn onClick={()=>{setError(null);setStep(2);}} disabled={!s1v}>Continue</Btn><p style={{textAlign:"center",fontSize:"0.85rem",color:C.muted,marginTop:"1.25rem"}}>Already have an account?{" "}<span onClick={onLogin} style={{color:C.terracotta,cursor:"pointer",fontWeight:500}}>Log in</span></p></>}{step===2&&<><AirportInput value={form.homeAirport} onChange={setVal("homeAirport")}/><Input label="Date of Birth" type="date" value={form.dateOfBirth} onChange={set("dateOfBirth")} optional/><NationalityInput value={form.nationality} onChange={setVal("nationality")}/><Btn onClick={()=>setStep(3)} disabled={!s2v}>Continue</Btn><Btn onClick={()=>setStep(1)} variant="secondary" style={{marginTop:"0.5rem"}}>Back</Btn></>}{step===3&&<><div style={{background:C.parchment,borderRadius:12,padding:"0.85rem 1rem",marginBottom:"1.25rem",fontSize:"0.82rem",color:C.muted,lineHeight:1.6}}>We store this securely so you never have to type it again when booking.</div><Input label="Passport Number" value={form.passportNumber} onChange={set("passportNumber")} placeholder="e.g. 123456789" optional/><Input label="Passport Expiry" type="date" value={form.passportExpiry} onChange={set("passportExpiry")} optional/><Btn onClick={handleSignUp} disabled={loading}>{loading?"Creating your account…":"Start Planning →"}</Btn><Btn onClick={()=>setStep(2)} variant="secondary" style={{marginTop:"0.5rem"}}>Back</Btn></>}</div></div>);}
@@ -257,6 +330,7 @@ export default function Home(){
   const[showRefine,setShowRefine]=useState(false);
   const[showStory,setShowStory]=useState(false);
   const[showBooking,setShowBooking]=useState(false);
+  const[saveError,setSaveError]=useState(null);
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>{if(session?.user){setUser(session.user);loadUserData(session.user.id);}setAuthLoading(false);});
@@ -281,7 +355,7 @@ export default function Home(){
         country:tripData.country,
         trip_data:tripData,
       });
-      if(insertError){console.error("Save error:",insertError);return false;}
+      if(insertError){console.error("Save error:",insertError);setSaveError(insertError.message||"Failed to save trip");return false;}
       await loadUserData(userId);
       return true;
     }catch(e){console.error("Save failed:",e);return false;}
@@ -327,8 +401,9 @@ export default function Home(){
     </Head>
 
     {error&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:"#c0392b",color:"#fff",padding:"0.75rem 1.25rem",borderRadius:10,fontSize:"0.85rem",fontFamily:"'DM Sans',sans-serif",zIndex:200,maxWidth:"90vw",textAlign:"center"}}>{error} — please try again.</div>}
+    {saveError&&<div onClick={()=>setSaveError(null)} style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:"#c0392b",color:"#fff",padding:"0.75rem 1.25rem",borderRadius:10,fontSize:"0.85rem",fontFamily:"'DM Sans',sans-serif",zIndex:200,maxWidth:"90vw",textAlign:"center",cursor:"pointer"}}>Trip not saved: {saveError}</div>}
 
-    {!user&&authScreen==="splash"&&<SplashScreen onCreateAccount={()=>setAuthScreen("signup")} onLogin={()=>setAuthScreen("login")}/>}
+    {!user&&authScreen==="splash"&&<LandingPage onCreateAccount={()=>setAuthScreen("signup")} onLogin={()=>setAuthScreen("login")}/>}
     {!user&&authScreen==="signup"&&<SignUpScreen onSuccess={handleAuthSuccess} onLogin={()=>setAuthScreen("login")}/>}
     {!user&&authScreen==="login"&&<LoginScreen onSuccess={handleAuthSuccess} onCreateAccount={()=>setAuthScreen("signup")}/>}
 
