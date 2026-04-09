@@ -46,14 +46,32 @@ function BookingScreen({trip,onBack,onDone}){
 
   // Build Skyscanner deep link
   const buildSkyscannerUrl=()=>{
-    const dest=encodeURIComponent(trip.destination);
+    const IATA={
+      'santorini':'jtr','athens':'ath','mykonos':'jmk','crete':'her','rhodes':'rho','corfu':'cfu','zakynthos':'zth',
+      'rome':'rom','milan':'mil','venice':'vce','florence':'flo','naples':'nap','sicily':'cta','sardinia':'cag',
+      'amalfi':'nap','positano':'nap',
+      'barcelona':'bcn','madrid':'mad','seville':'svq','malaga':'agp','ibiza':'ibz','mallorca':'pmi','valencia':'vlc',
+      'lisbon':'lis','porto':'opo','algarve':'fao',
+      'paris':'par','nice':'nce','marseille':'mrs','lyon':'lys',
+      'amsterdam':'ams','brussels':'bru','copenhagen':'cph','stockholm':'sto','oslo':'osl','helsinki':'hel',
+      'prague':'prg','vienna':'vie','budapest':'bud','krakow':'krk','warsaw':'waw',
+      'dubrovnik':'dbv','split':'spu','zagreb':'zag','montenegro':'tgd',
+      'reykjavik':'rek',
+      'bali':'dps','maldives':'mle','phuket':'hkt','koh samui':'usp','krabi':'kbv',
+      'bangkok':'bkk','singapore':'sin','hong kong':'hkg','tokyo':'tyo','osaka':'kix','kyoto':'kix',
+      'dubai':'dxb','abu dhabi':'auh','doha':'doh','marrakech':'rak',
+      'cape town':'cpt','zanzibar':'znz','nairobi':'nbo',
+      'new york':'nyc','los angeles':'lax','miami':'mia','cancun':'cun',
+      'sydney':'syd','melbourne':'mel','bali':'dps',
+    };
+    const key=trip.destination.toLowerCase();
+    const destCode=Object.entries(IATA).find(([k])=>key.includes(k))?.[1]||'anywhere';
     const travellers=trip.travellers||2;
     const today=new Date();
-    const depart=new Date(today.setDate(today.getDate()+30));
-    const ret=new Date(depart);
-    ret.setDate(ret.getDate()+(trip.duration||4));
-    const fmt2=(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-    return `https://www.skyscanner.net/transport/flights/uk/${dest}/${fmt2(depart)}/${fmt2(ret)}/?adults=${travellers}&cabinclass=economy&currency=GBP&locale=en-GB&market=UK`;
+    const depart=new Date(today);depart.setDate(depart.getDate()+30);
+    const ret=new Date(depart);ret.setDate(ret.getDate()+(trip.duration||4));
+    const fmt2=(d)=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+    return `https://www.skyscanner.net/transport/flights/lond/${destCode}/${fmt2(depart)}/${fmt2(ret)}/?adults=${travellers}&cabinclass=economy&currency=GBP&locale=en-GB&market=UK`;
   };
 
   // Build Booking.com deep link
