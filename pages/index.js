@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Head from "next/head";
 import { supabase } from "../lib/supabase";
 
@@ -44,6 +44,14 @@ function BookingScreen({trip,onBack,onDone}){
   const[step,setStep]=useState(0); // 0=flights, 1=hotels, 2=activities
   const steps=["Flights","Hotels","Activities"];
 
+  // Date state — default to 4 weeks from today
+  const defaultDepart=()=>{const d=new Date();d.setDate(d.getDate()+28);return d.toISOString().split("T")[0];};
+  const defaultReturn=(dep)=>{const d=new Date(dep);d.setDate(d.getDate()+(trip.duration||5));return d.toISOString().split("T")[0];};
+  const[datesConfirmed,setDatesConfirmed]=useState(false);
+  const[departDate,setDepartDate]=useState(defaultDepart);
+  const[returnDate,setReturnDate]=useState(()=>defaultReturn(defaultDepart()));
+  const handleDepartChange=(v)=>{setDepartDate(v);setReturnDate(defaultReturn(v));};
+
   // Build Skyscanner deep link
   const buildSkyscannerUrl=()=>{
     const IATA={
@@ -67,22 +75,14 @@ function BookingScreen({trip,onBack,onDone}){
     const key=trip.destination.toLowerCase();
     const destCode=Object.entries(IATA).find(([k])=>key.includes(k))?.[1]||'anywhere';
     const travellers=trip.travellers||2;
-    const today=new Date();
-    const depart=new Date(today);depart.setDate(depart.getDate()+30);
-    const ret=new Date(depart);ret.setDate(ret.getDate()+(trip.duration||4));
-    const fmt2=(d)=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
-    return `https://www.skyscanner.net/transport/flights/lond/${destCode}/${fmt2(depart)}/${fmt2(ret)}/?adults=${travellers}&cabinclass=economy&currency=GBP&locale=en-GB&market=UK`;
+    const fmt2=(s)=>s.replace(/-/g,"");
+    return `https://www.skyscanner.net/transport/flights/lond/${destCode}/${fmt2(departDate)}/${fmt2(returnDate)}/?adults=${travellers}&cabinclass=economy&currency=GBP&locale=en-GB&market=UK`;
   };
 
   // Build Booking.com deep link
   const buildBookingUrl=()=>{
     const dest=encodeURIComponent(trip.destination+", "+trip.country);
-    const today=new Date();
-    const checkin=new Date(today.setDate(today.getDate()+30));
-    const checkout=new Date(checkin);
-    checkout.setDate(checkout.getDate()+(trip.duration||4));
-    const fmt2=(d)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-    return `https://www.booking.com/searchresults.html?ss=${dest}&checkin=${fmt2(checkin)}&checkout=${fmt2(checkout)}&group_adults=${trip.travellers||2}&no_rooms=1&lang=en-gb&currency=GBP`;
+    return `https://www.booking.com/searchresults.html?ss=${dest}&checkin=${departDate}&checkout=${returnDate}&group_adults=${trip.travellers||2}&no_rooms=1&lang=en-gb&currency=GBP`;
   };
 
   // Build GetYourGuide link
@@ -126,13 +126,41 @@ function BookingScreen({trip,onBack,onDone}){
 
   const current=stepContent[step];
 
+  if(!datesConfirmed){return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif"}}>
+    <div style={{background:C.espresso,padding:"2.5rem 1.5rem 2rem",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/>
+      <div style={{position:"relative"}}>
+        <button onClick={onBack} style={{background:"transparent",border:"none",color:"rgba(242,232,217,0.5)",fontSize:"0.82rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:0,marginBottom:"1.25rem",display:"flex",alignItems:"center",gap:6}}>← Back to trip</button>
+        <ZirvoyLogo light/>
+        <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.8rem",fontWeight:600,color:C.sand,margin:"1rem 0 0.25rem"}}>When are you going?</h2>
+        <p style={{fontSize:"0.85rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>Set your dates for accurate flight & hotel prices</p>
+      </div>
+    </div>
+    <div style={{padding:"1.75rem 1.5rem",maxWidth:480,margin:"0 auto"}}>
+      <div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.5rem",marginBottom:"1.25rem",boxShadow:"0 2px 16px rgba(28,20,16,0.05)"}}>
+        <div style={{marginBottom:"1.25rem"}}>
+          <label style={{display:"block",fontSize:"0.72rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"0.4rem"}}>Departure Date</label>
+          <input type="date" value={departDate} min={new Date().toISOString().split("T")[0]} onChange={e=>handleDepartChange(e.target.value)} style={{width:"100%",padding:"0.85rem 1rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:10,fontSize:"0.95rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
+        </div>
+        <div>
+          <label style={{display:"block",fontSize:"0.72rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"0.4rem"}}>Return Date</label>
+          <input type="date" value={returnDate} min={departDate} onChange={e=>setReturnDate(e.target.value)} style={{width:"100%",padding:"0.85rem 1rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:10,fontSize:"0.95rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
+        </div>
+      </div>
+      <div style={{background:C.parchment,borderRadius:12,padding:"0.85rem 1rem",marginBottom:"1.5rem",fontSize:"0.82rem",color:C.muted,lineHeight:1.6}}>
+        {trip.duration} nights suggested · {trip.travellers} traveller{trip.travellers>1?"s":""}
+      </div>
+      <button onClick={()=>setDatesConfirmed(true)} style={{width:"100%",padding:"1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Find Flights & Hotels →</button>
+    </div>
+  </div>);}
+
   return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif",paddingBottom:80}}>
     {/* Header */}
     <div style={{background:C.espresso,padding:"2.5rem 1.5rem 2rem",position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/>
       <div style={{position:"relative"}}>
-        <button onClick={onBack} style={{background:"transparent",border:"none",color:"rgba(242,232,217,0.5)",fontSize:"0.82rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:0,marginBottom:"1.25rem",display:"flex",alignItems:"center",gap:6}}>
-          ← Back to trip
+        <button onClick={()=>setDatesConfirmed(false)} style={{background:"transparent",border:"none",color:"rgba(242,232,217,0.5)",fontSize:"0.82rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:0,marginBottom:"1.25rem",display:"flex",alignItems:"center",gap:6}}>
+          ← Change dates
         </button>
         <ZirvoyLogo light/>
         <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.8rem",fontWeight:600,color:C.sand,margin:"1rem 0 0.25rem"}}>
@@ -184,7 +212,71 @@ function BookingScreen({trip,onBack,onDone}){
     </div>
   </div>);}
 
-function MyTripsScreen({trips,onTripClick,onPlanNew}){return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif",paddingBottom:80}}><div style={{background:C.espresso,padding:"3rem 1.5rem 2rem",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/><div style={{position:"relative"}}><ZirvoyLogo light/><h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"2rem",fontWeight:600,color:C.sand,margin:"1.25rem 0 0.25rem"}}>My Trips</h2><p style={{fontSize:"0.85rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>{trips.length} {trips.length===1?"trip":"trips"} saved</p></div></div><div style={{padding:"1.5rem"}}>{trips.length===0?(<div style={{textAlign:"center",padding:"3rem 1rem"}}><div style={{marginBottom:"1rem",opacity:0.3}}><ZirvoyMark size={48} color={C.espresso}/></div><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.3rem",color:C.espresso,margin:"0 0 0.5rem"}}>No trips yet</p><p style={{fontSize:"0.85rem",color:C.muted,margin:"0 0 1.5rem",fontWeight:300}}>Plan your first trip and it'll be saved here automatically</p><button onClick={onPlanNew} style={{padding:"0.85rem 1.75rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.9rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Plan a Trip</button></div>):(<div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>{trips.map(t=>(<div key={t.id} onClick={()=>onTripClick(t)} style={{background:C.white,borderRadius:16,border:`1px solid ${C.border}`,overflow:"hidden",cursor:"pointer",boxShadow:"0 2px 12px rgba(28,20,16,0.06)"}}>{t.trip_data?.photo&&(<div style={{height:120,overflow:"hidden",position:"relative"}}><img src={t.trip_data.photo} alt={t.destination} style={{width:"100%",height:"100%",objectFit:"cover"}}/><div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 40%,rgba(28,20,16,0.7) 100%)"}}/><div style={{position:"absolute",bottom:0,left:0,right:0,padding:"0.75rem 1rem"}}><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.3rem",fontWeight:600,color:C.sand,margin:0,lineHeight:1}}>{t.destination}</p><p style={{fontSize:"0.72rem",color:"rgba(242,232,217,0.7)",margin:"0.2rem 0 0",fontFamily:"'DM Sans',sans-serif"}}>{t.trip_data?.country}</p></div></div>)}<div style={{padding:"0.85rem 1rem",display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{display:"flex",gap:"0.75rem"}}><span style={{fontSize:"0.75rem",color:C.muted}}>{t.trip_data?.duration} nights</span><span style={{fontSize:"0.75rem",color:C.muted}}>·</span><span style={{fontSize:"0.75rem",color:C.muted}}>£{fmt(t.trip_data?.budgetTotal)}</span><span style={{fontSize:"0.75rem",color:C.muted}}>·</span><span style={{fontSize:"0.75rem",color:C.muted}}>{t.trip_data?.travellers} travellers</span></div><span style={{color:C.terracotta,fontSize:"1rem"}}>→</span></div></div>))}<button onClick={onPlanNew} style={{marginTop:"0.5rem",padding:"1rem",background:"transparent",color:C.terracotta,border:`1.5px solid ${C.terracotta}`,borderRadius:14,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>+ Plan a New Trip</button></div>)}</div></div>);}
+function SwipeableTrip({t,onTripClick,onDelete}){
+  const[offset,setOffset]=useState(0);
+  const[deleting,setDeleting]=useState(false);
+  const startX=React.useRef(null);
+  const THRESHOLD=80;
+  const DELETE_THRESHOLD=200;
+
+  const onStart=(clientX)=>{startX.current=clientX;};
+  const onMove=(clientX)=>{
+    if(startX.current===null)return;
+    const dx=clientX-startX.current;
+    if(dx<0)setOffset(Math.max(dx,-240));
+  };
+  const onEnd=()=>{
+    if(offset<-DELETE_THRESHOLD){
+      setDeleting(true);
+      onDelete(t.id);
+    } else if(offset<-THRESHOLD){
+      setOffset(-THRESHOLD);
+    } else {
+      setOffset(0);
+    }
+    startX.current=null;
+  };
+
+  if(deleting)return null;
+
+  return(
+    <div style={{position:"relative",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px rgba(28,20,16,0.06)"}}>
+      {/* Red delete background */}
+      <div style={{position:"absolute",inset:0,background:"#c0392b",display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:"1.25rem",borderRadius:16}}>
+        <div style={{textAlign:"center",color:C.white}}>
+          <div style={{fontSize:"1.4rem",marginBottom:"0.2rem"}}>🗑</div>
+          <div style={{fontSize:"0.7rem",fontWeight:600,letterSpacing:"0.08em"}}>DELETE</div>
+        </div>
+      </div>
+      {/* Card */}
+      <div
+        style={{transform:`translateX(${offset}px)`,transition:startX.current===null?"transform 0.3s ease":"none",background:C.white,borderRadius:16,border:`1px solid ${C.border}`,overflow:"hidden",cursor:"pointer",position:"relative",zIndex:1}}
+        onClick={()=>{if(offset===0)onTripClick(t);else setOffset(0);}}
+        onTouchStart={e=>onStart(e.touches[0].clientX)}
+        onTouchMove={e=>onMove(e.touches[0].clientX)}
+        onTouchEnd={onEnd}
+        onMouseDown={e=>onStart(e.clientX)}
+        onMouseMove={e=>{if(startX.current!==null)onMove(e.clientX);}}
+        onMouseUp={onEnd}
+        onMouseLeave={()=>{if(startX.current!==null)onEnd();}}
+      >
+        {t.trip_data?.photo&&(<div style={{height:120,overflow:"hidden",position:"relative"}}><img src={t.trip_data.photo} alt={t.destination} style={{width:"100%",height:"100%",objectFit:"cover"}}/><div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 40%,rgba(28,20,16,0.7) 100%)"}}/><div style={{position:"absolute",bottom:0,left:0,right:0,padding:"0.75rem 1rem"}}><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.3rem",fontWeight:600,color:C.sand,margin:0,lineHeight:1}}>{t.destination}</p><p style={{fontSize:"0.72rem",color:"rgba(242,232,217,0.7)",margin:"0.2rem 0 0",fontFamily:"'DM Sans',sans-serif"}}>{t.trip_data?.country}</p></div></div>)}
+        <div style={{padding:"0.85rem 1rem",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{display:"flex",gap:"0.75rem"}}>
+            <span style={{fontSize:"0.75rem",color:C.muted}}>{t.trip_data?.duration} nights</span>
+            <span style={{fontSize:"0.75rem",color:C.muted}}>·</span>
+            <span style={{fontSize:"0.75rem",color:C.muted}}>£{fmt(t.trip_data?.budgetTotal)}</span>
+            <span style={{fontSize:"0.75rem",color:C.muted}}>·</span>
+            <span style={{fontSize:"0.75rem",color:C.muted}}>{t.trip_data?.travellers} travellers</span>
+          </div>
+          <span style={{color:C.terracotta,fontSize:"1rem"}}>→</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MyTripsScreen({trips,onTripClick,onPlanNew,onDeleteTrip}){return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif",paddingBottom:80}}><div style={{background:C.espresso,padding:"3rem 1.5rem 2rem",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/><div style={{position:"relative"}}><ZirvoyLogo light/><h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"2rem",fontWeight:600,color:C.sand,margin:"1.25rem 0 0.25rem"}}>My Trips</h2><p style={{fontSize:"0.85rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>{trips.length} {trips.length===1?"trip":"trips"} saved</p></div></div><div style={{padding:"1.5rem"}}>{trips.length===0?(<div style={{textAlign:"center",padding:"3rem 1rem"}}><div style={{marginBottom:"1rem",opacity:0.3}}><ZirvoyMark size={48} color={C.espresso}/></div><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.3rem",color:C.espresso,margin:"0 0 0.5rem"}}>No trips yet</p><p style={{fontSize:"0.85rem",color:C.muted,margin:"0 0 1.5rem",fontWeight:300}}>Plan your first trip and it'll be saved here automatically</p><button onClick={onPlanNew} style={{padding:"0.85rem 1.75rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.9rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Plan a Trip</button></div>):(<div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}><p style={{fontSize:"0.72rem",color:C.muted,margin:"0 0 0.25rem",fontWeight:300,textAlign:"right"}}>← Swipe left to delete</p>{trips.map(t=>(<SwipeableTrip key={t.id} t={t} onTripClick={onTripClick} onDelete={onDeleteTrip}/>))}<button onClick={onPlanNew} style={{marginTop:"0.5rem",padding:"1rem",background:"transparent",color:C.terracotta,border:`1.5px solid ${C.terracotta}`,borderRadius:14,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>+ Plan a New Trip</button></div>)}</div></div>);}
 
 function AccountScreen({profile,onSignOut}){return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif",paddingBottom:80}}><div style={{background:C.espresso,padding:"3rem 1.5rem 2.5rem",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/><div style={{position:"relative"}}><ZirvoyLogo light/><div style={{marginTop:"1.5rem",display:"flex",alignItems:"center",gap:"1rem"}}><div style={{width:52,height:52,borderRadius:"50%",background:"rgba(196,98,45,0.2)",border:`1.5px solid ${C.terracotta}`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.4rem",fontWeight:600,color:C.sand}}>{(profile?.first_name?.[0]||"Z").toUpperCase()}</span></div><div><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.4rem",fontWeight:600,color:C.sand,margin:0}}>{profile?.first_name} {profile?.last_name}</p><p style={{fontSize:"0.8rem",color:"rgba(242,232,217,0.5)",margin:"0.1rem 0 0",fontWeight:300}}>{profile?.email}</p></div></div></div></div><div style={{padding:"1.5rem"}}><div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.25rem",marginBottom:"1rem",boxShadow:"0 2px 12px rgba(28,20,16,0.05)"}}><p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 1rem"}}>Your Details</p>{[["Home Airport",profile?.home_airport||"Not set"],["Nationality",profile?.nationality||"Not set"],["Date of Birth",profile?.date_of_birth||"Not set"]].map(([label,val])=>(<div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:"0.85rem",marginBottom:"0.85rem",borderBottom:`1px solid ${C.parchment}`}}><span style={{fontSize:"0.85rem",color:C.muted}}>{label}</span><span style={{fontSize:"0.85rem",color:C.espresso,fontWeight:500}}>{val}</span></div>))}<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"0.85rem",color:C.muted}}>Passport</span><span style={{fontSize:"0.85rem",color:profile?.passport_number?C.espresso:C.muted,fontWeight:profile?.passport_number?500:300}}>{profile?.passport_number?"••••••••••":"Not added"}</span></div></div>{!profile?.passport_number&&(<div style={{background:C.parchment,borderRadius:14,padding:"1rem 1.1rem",marginBottom:"1rem",border:`1px solid ${C.border}`}}><p style={{fontSize:"0.8rem",fontWeight:600,color:C.espresso,margin:"0 0 0.25rem"}}>💡 Speed up booking</p><p style={{fontSize:"0.78rem",color:C.muted,margin:0,lineHeight:1.5,fontWeight:300}}>Add your passport details and we'll pre-fill them when you book.</p></div>)}<button onClick={onSignOut} style={{width:"100%",padding:"1rem",background:"transparent",color:"#c0392b",border:"1.5px solid #c0392b",borderRadius:14,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"0.5rem"}}>Sign Out</button></div></div>);}
 
@@ -461,6 +553,7 @@ export default function Home(){
     }catch(e){console.error("Save failed:",e);return false;}
   };
 
+  const deleteTrip=async(tripId)=>{await supabase.from("trips").delete().eq("id",tripId);setTrips(prev=>prev.filter(t=>t.id!==tripId));};
   const handleAuthSuccess=async(newUser)=>{setUser(newUser);if(newUser)await loadUserData(newUser.id);setAuthScreen("app");};
   const handleSignOut=async()=>{await supabase.auth.signOut();setUser(null);setProfile(null);setTrips([]);setAuthScreen("splash");setScreen("home");setTrip(null);setActiveTab("home");};
 
@@ -522,7 +615,7 @@ export default function Home(){
         {activeTab==="home"&&screen==="home"&&<HomeScreen user={user} profile={profile} trips={trips} onGenerate={handleGenerate} onDecide={()=>setShowDecide(true)} onTripClick={handleTripClick} loading={loading}/>}
         {showDecide&&<DecideModal onClose={()=>setShowDecide(false)} onGenerate={handleGenerate}/>}
         {activeTab==="home"&&screen==="results"&&trip&&(<><ResultsScreen trip={trip} onNewTrip={handleNewTrip} onTryAgain={()=>setShowRefine(true)} onLetsBook={handleLetsBook} onSaveTrip={handleManualSave} isSaved={tripSaved}/>{showRefine&&<RefineModal destination={trip.destination} onClose={()=>setShowRefine(false)} onRefine={handleRefine} loading={loading}/>}</>)}
-        {activeTab==="trips"&&<MyTripsScreen trips={trips} onTripClick={handleTripClick} onPlanNew={()=>{setActiveTab("home");setScreen("home");}}/>}
+        {activeTab==="trips"&&<MyTripsScreen trips={trips} onTripClick={handleTripClick} onDeleteTrip={deleteTrip} onPlanNew={()=>{setActiveTab("home");setScreen("home");}}/>}
         {activeTab==="account"&&<AccountScreen profile={profile} onSignOut={handleSignOut}/>}
         <BottomNav active={activeTab} onChange={handleTabChange}/>
       </>)}
