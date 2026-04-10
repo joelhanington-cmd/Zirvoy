@@ -621,7 +621,7 @@ function MyTripsScreen({trips,onTripClick,onPlanNew,onDeleteTrip,destImages=[]})
 
 function AccountScreen({profile,onSignOut,destImages=[]}){return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif",paddingBottom:80}}><CyclingHeader images={destImages} minH="200px"><div style={{padding:"3rem 1.5rem 2.5rem"}}><ZirvoyLogo light/><div style={{marginTop:"1.5rem",display:"flex",alignItems:"center",gap:"1rem"}}><div style={{width:52,height:52,borderRadius:"50%",background:"rgba(196,98,45,0.2)",border:`1.5px solid ${C.terracotta}`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.4rem",fontWeight:600,color:C.sand}}>{(profile?.first_name?.[0]||"Z").toUpperCase()}</span></div><div><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.4rem",fontWeight:600,color:C.sand,margin:0}}>{profile?.first_name} {profile?.last_name}</p><p style={{fontSize:"0.8rem",color:"rgba(242,232,217,0.5)",margin:"0.1rem 0 0",fontWeight:300}}>{profile?.email}</p></div></div></div></CyclingHeader><div style={{padding:"1.5rem"}}><div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.25rem",marginBottom:"1rem",boxShadow:"0 2px 12px rgba(28,20,16,0.05)"}}><p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 1rem"}}>Your Details</p>{[["Home Airport",profile?.home_airport||"Not set"],["Nationality",profile?.nationality||"Not set"],["Date of Birth",profile?.date_of_birth||"Not set"]].map(([label,val])=>(<div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:"0.85rem",marginBottom:"0.85rem",borderBottom:`1px solid ${C.parchment}`}}><span style={{fontSize:"0.85rem",color:C.muted}}>{label}</span><span style={{fontSize:"0.85rem",color:C.espresso,fontWeight:500}}>{val}</span></div>))}<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"0.85rem",color:C.muted}}>Passport</span><span style={{fontSize:"0.85rem",color:profile?.passport_number?C.espresso:C.muted,fontWeight:profile?.passport_number?500:300}}>{profile?.passport_number?"••••••••••":"Not added"}</span></div></div>{!profile?.passport_number&&(<div style={{background:C.parchment,borderRadius:14,padding:"1rem 1.1rem",marginBottom:"1rem",border:`1px solid ${C.border}`}}><p style={{fontSize:"0.8rem",fontWeight:600,color:C.espresso,margin:"0 0 0.25rem"}}>💡 Speed up booking</p><p style={{fontSize:"0.78rem",color:C.muted,margin:0,lineHeight:1.5,fontWeight:300}}>Add your passport details and we'll pre-fill them when you book.</p></div>)}<button onClick={onSignOut} style={{width:"100%",padding:"1rem",background:"transparent",color:"#c0392b",border:"1.5px solid #c0392b",borderRadius:14,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"0.5rem"}}>Sign Out</button></div></div>);}
 
-function LandingPage({onCreateAccount,onLogin}){
+function LandingPage({onCreateAccount,onLogin,onDecide}){
   const[photos,setPhotos]=useState([]);
   const[current,setCurrent]=useState(0);
   const[imgLoaded,setImgLoaded]=useState({});
@@ -676,8 +676,9 @@ function LandingPage({onCreateAccount,onLogin}){
             ))}
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
-            <Btn onClick={onCreateAccount} variant="primary">Start Planning Free →</Btn>
-            <Btn onClick={onLogin} variant="outline">Log In</Btn>
+            <Btn onClick={onDecide||onCreateAccount} variant="primary">✨ I need help deciding</Btn>
+            <Btn onClick={onCreateAccount} variant="outline">Start planning free →</Btn>
+            <Btn onClick={onLogin} variant="secondary" style={{color:"rgba(242,232,217,0.45)",fontSize:"0.85rem",padding:"0.5rem"}}>Already have an account? Log in</Btn>
           </div>
           {photos.length>1&&(
             <div style={{display:"flex",gap:5,justifyContent:"center",marginTop:"1.75rem"}}>
@@ -862,6 +863,7 @@ export default function Home(){
   const[showBooking,setShowBooking]=useState(false);
   const[saveError,setSaveError]=useState(null);
   const[showDecide,setShowDecide]=useState(false);
+  const[pendingDecide,setPendingDecide]=useState(false);
   const[destImages,setDestImages]=useState([]);
 
   useEffect(()=>{fetch("/api/destinations").then(r=>r.json()).then(d=>{if(d.photos?.length)setDestImages(d.photos.map(p=>p.url));}).catch(()=>{});},[]);
@@ -896,7 +898,7 @@ export default function Home(){
   };
 
   const deleteTrip=async(tripId)=>{await supabase.from("trips").delete().eq("id",tripId);setTrips(prev=>prev.filter(t=>t.id!==tripId));};
-  const handleAuthSuccess=async(newUser)=>{setUser(newUser);if(newUser)await loadUserData(newUser.id);setAuthScreen("app");};
+  const handleAuthSuccess=async(newUser)=>{setUser(newUser);if(newUser)await loadUserData(newUser.id);setAuthScreen("app");if(pendingDecide){setShowDecide(true);setPendingDecide(false);}};
   const handleSignOut=async()=>{await supabase.auth.signOut();setUser(null);setProfile(null);setTrips([]);setAuthScreen("splash");setScreen("home");setTrip(null);setActiveTab("home");};
 
   const generate=async(request)=>{
@@ -938,7 +940,7 @@ export default function Home(){
     {error&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:"#c0392b",color:"#fff",padding:"0.75rem 1.25rem",borderRadius:10,fontSize:"0.85rem",fontFamily:"'DM Sans',sans-serif",zIndex:200,maxWidth:"90vw",textAlign:"center"}}>{error} — please try again.</div>}
     {saveError&&<div onClick={()=>setSaveError(null)} style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:"#c0392b",color:"#fff",padding:"0.75rem 1.25rem",borderRadius:10,fontSize:"0.85rem",fontFamily:"'DM Sans',sans-serif",zIndex:200,maxWidth:"90vw",textAlign:"center",cursor:"pointer"}}>Trip not saved: {saveError}</div>}
 
-    {!user&&authScreen==="splash"&&<LandingPage onCreateAccount={()=>setAuthScreen("signup")} onLogin={()=>setAuthScreen("login")}/>}
+    {!user&&authScreen==="splash"&&<LandingPage onCreateAccount={()=>setAuthScreen("signup")} onLogin={()=>setAuthScreen("login")} onDecide={()=>{setPendingDecide(true);setAuthScreen("signup");}}/>}
     {!user&&authScreen==="signup"&&<SignUpScreen onSuccess={handleAuthSuccess} onLogin={()=>setAuthScreen("login")}/>}
     {!user&&authScreen==="login"&&<LoginScreen onSuccess={handleAuthSuccess} onCreateAccount={()=>setAuthScreen("signup")}/>}
 
