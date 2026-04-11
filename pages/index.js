@@ -677,8 +677,7 @@ function LandingPage({onCreateAccount,onLogin,onDecide}){
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
             <Btn onClick={onDecide||onCreateAccount} variant="primary">✨ I need help deciding</Btn>
-            <Btn onClick={onCreateAccount} variant="outline">Start planning free →</Btn>
-            <Btn onClick={onLogin} variant="secondary" style={{color:"rgba(242,232,217,0.45)",fontSize:"0.85rem",padding:"0.5rem"}}>Already have an account? Log in</Btn>
+            <Btn onClick={onLogin} variant="outline">Log In</Btn>
           </div>
           {photos.length>1&&(
             <div style={{display:"flex",gap:5,justifyContent:"center",marginTop:"1.75rem"}}>
