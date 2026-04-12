@@ -1128,16 +1128,18 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
   const[dayImages,setDayImages]=useState({});
   const[copied,setCopied]=useState(false);
   const[tipLoading,setTipLoading]=useState(false);
+  const[tipFresh,setTipFresh]=useState(false);
   const day=trip.itinerary?.[activeDay];
   const handleSave=async()=>{setSaving(true);await onSaveTrip();setSaved(true);setSaving(false);};
   const labels={flights:"Flights",hotel:"Hotel",food:"Food & Drink",activities:"Activities",misc:"Extras"};
 
   const refreshTip=async()=>{
-    setTipLoading(true);
+    if(tipLoading)return;
+    setTipLoading(true);setTipFresh(false);
     try{
       const r=await fetch("/api/tip",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({destination:trip.destination,country:trip.country})});
       const d=await r.json();
-      if(d.tip)setTrip(t=>({...t,tip:d.tip}));
+      if(d.tip){setTrip(t=>({...t,tip:d.tip}));setTipFresh(true);setTimeout(()=>setTipFresh(false),2500);}
     }catch(e){}
     finally{setTipLoading(false);}
   };
@@ -1231,14 +1233,14 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
         </div>
 
         {/* Insider tip */}
-        <div style={{background:C.espresso,borderRadius:18,padding:"1.4rem 1.5rem",marginBottom:"1rem",position:"relative",overflow:"hidden"}}>
+        <div style={{background:tipFresh?"#2a1a0e":C.espresso,borderRadius:18,padding:"1.4rem 1.5rem",marginBottom:"1rem",position:"relative",overflow:"hidden",transition:"background 0.4s ease"}}>
           <div style={{position:"absolute",top:-25,right:-25,width:120,height:120,borderRadius:"50%",border:"1px solid rgba(196,98,45,0.18)"}}/>
           <div style={{position:"absolute",top:8,right:10,opacity:0.1}}><ZirvoyMark size={52} color={C.terracotta}/></div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:7,marginBottom:"0.65rem"}}>
             <div style={{display:"flex",alignItems:"center",gap:7}}><div style={{width:3,height:12,background:C.terracotta,borderRadius:2}}/><p style={{fontSize:"0.65rem",fontWeight:600,color:C.terracotta,textTransform:"uppercase",letterSpacing:"0.16em",margin:0}}>Zirvoy Insider Tip</p></div>
-            <button onClick={refreshTip} disabled={tipLoading} style={{background:"rgba(196,98,45,0.18)",border:"1px solid rgba(196,98,45,0.3)",color:C.terra2,padding:"0.25rem 0.65rem",borderRadius:20,fontSize:"0.68rem",fontWeight:500,cursor:tipLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif"}}>{tipLoading?"…":"↻ New tip"}</button>
+            <button onClick={refreshTip} disabled={tipLoading} style={{background:tipFresh?"rgba(100,200,100,0.2)":"rgba(196,98,45,0.18)",border:`1px solid ${tipFresh?"rgba(100,200,100,0.4)":"rgba(196,98,45,0.3)"}`,color:tipFresh?"#7ecf7e":C.terra2,padding:"0.25rem 0.65rem",borderRadius:20,fontSize:"0.68rem",fontWeight:500,cursor:tipLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.3s"}}>{tipLoading?"…":tipFresh?"✓ Updated":"↻ New tip"}</button>
           </div>
-          <p style={{margin:0,fontFamily:"'Cormorant Garamond',serif",fontSize:"1.1rem",color:C.sand,lineHeight:1.8,fontStyle:"italic"}}>{trip.tip}</p>
+          <p key={trip.tip} style={{margin:0,fontFamily:"'Cormorant Garamond',serif",fontSize:"1.1rem",color:C.sand,lineHeight:1.8,fontStyle:"italic",transition:"opacity 0.3s"}}>{trip.tip}</p>
         </div>
 
         {/* Weather */}
@@ -1317,6 +1319,13 @@ function ItineraryBuilder({trip,onItineraryChange}){
     {e:"💶",l:"Do I need cash?"},
     {e:"🗺",l:"Best day trips?"},
   ];
+  const actionConfig={
+    itinerary:null, // handled separately via applyChange
+    car_hire:{label:"Search car hire →",emoji:"🚗",url:()=>`https://www.rentalcars.com/search?location=${encodeURIComponent(trip.destination)}`},
+    activities:{label:"Browse activities →",emoji:"🎯",url:()=>`https://www.getyourguide.com/s/?q=${encodeURIComponent(trip.destination)}`},
+    restaurants:{label:"Find restaurants →",emoji:"🍽",url:()=>`https://www.tripadvisor.co.uk/Search?q=${encodeURIComponent(trip.destination+" restaurants")}`},
+    flights:{label:"Search flights →",emoji:"✈",url:()=>`https://www.skyscanner.net/transport/flights/uk/${encodeURIComponent((trip.destination||"").toLowerCase().replace(/\s+/g,""))}/`},
+  };
   const send=async(text)=>{
     if(!text.trim()||loading)return;
     const newMsgs=[...messages,{role:"user",content:text}];
@@ -1326,7 +1335,7 @@ function ItineraryBuilder({trip,onItineraryChange}){
     try{
       const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:text,trip,history:messages.slice(-8)})});
       const d=await r.json();
-      if(d.reply)setMessages(m=>[...m,{role:"assistant",content:d.reply,instruction:text}]);
+      if(d.reply)setMessages(m=>[...m,{role:"assistant",content:d.reply,action:d.action||null,instruction:text}]);
     }catch(e){setMessages(m=>[...m,{role:"assistant",content:"Sorry, I couldn't get a response right now."}]);}
     finally{setLoading(false);}
   };
@@ -1350,37 +1359,38 @@ function ItineraryBuilder({trip,onItineraryChange}){
   return(
     <div>
       {messages.length===0&&(
-        <div style={{marginBottom:"1rem"}}>
-          <p style={{fontSize:"0.78rem",color:C.muted,margin:"0 0 0.65rem",fontWeight:300}}>Ask about {trip.destination}, or say what you want to change:</p>
-          <div style={{display:"flex",flexWrap:"wrap",gap:"0.4rem"}}>
-            {chips.map(c=>(
-              <button key={c.l} onClick={()=>send(c.l)}
-                style={{padding:"0.35rem 0.8rem",background:C.sandLight,border:`1px solid ${C.border}`,borderRadius:20,fontSize:"0.78rem",color:C.espresso,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:"0.3rem"}}>
-                {c.e} {c.l}
-              </button>
-            ))}
-          </div>
-        </div>
+        <p style={{fontSize:"0.78rem",color:C.muted,margin:"0 0 0.65rem",fontWeight:300}}>Ask about {trip.destination}, or say what you want to change:</p>
       )}
       {messages.length>0&&(
-        <div style={{maxHeight:320,overflowY:"auto",marginBottom:"0.75rem",display:"flex",flexDirection:"column",gap:"0.65rem"}}>
-          {messages.map((m,i)=>(
+        <div style={{maxHeight:300,overflowY:"auto",marginBottom:"0.75rem",display:"flex",flexDirection:"column",gap:"0.65rem"}}>
+          {messages.map((m,i)=>{
+            const cfg=m.action&&m.action!=="itinerary"?actionConfig[m.action]:null;
+            return(
             <div key={i}>
               <div style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
                 <div style={{maxWidth:"82%",padding:"0.65rem 0.9rem",borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",background:m.role==="user"?C.terracotta:C.sandLight,color:m.role==="user"?C.white:C.ink,fontSize:"0.85rem",lineHeight:1.55,fontWeight:300}}>
                   {m.content}
                 </div>
               </div>
-              {m.role==="assistant"&&m.instruction&&!m.content.startsWith("✅")&&(
-                <div style={{display:"flex",justifyContent:"flex-start",marginTop:"0.35rem"}}>
-                  <button onClick={()=>applyChange(m.instruction,i)} disabled={applying!==null}
-                    style={{padding:"0.35rem 0.85rem",background:applying===i?"rgba(196,98,45,0.15)":C.white,border:`1.5px solid ${C.terracotta}`,borderRadius:20,fontSize:"0.75rem",color:C.terracotta,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
-                    {applying===i?"Updating itinerary…":"Apply this to my itinerary →"}
-                  </button>
+              {m.role==="assistant"&&!m.content.startsWith("✅")&&(
+                <div style={{display:"flex",justifyContent:"flex-start",marginTop:"0.35rem",gap:"0.4rem",flexWrap:"wrap"}}>
+                  {m.action==="itinerary"&&(
+                    <button onClick={()=>applyChange(m.instruction,i)} disabled={applying!==null}
+                      style={{padding:"0.35rem 0.85rem",background:applying===i?"rgba(196,98,45,0.15)":C.white,border:`1.5px solid ${C.terracotta}`,borderRadius:20,fontSize:"0.75rem",color:C.terracotta,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
+                      {applying===i?"Updating…":"Apply to my itinerary →"}
+                    </button>
+                  )}
+                  {cfg&&(
+                    <a href={cfg.url()} target="_blank" rel="noopener noreferrer"
+                      style={{padding:"0.35rem 0.85rem",background:C.espresso,border:"none",borderRadius:20,fontSize:"0.75rem",color:C.sand,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:"0.3rem"}}>
+                      {cfg.emoji} {cfg.label}
+                    </a>
+                  )}
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
           {loading&&(
             <div style={{display:"flex",justifyContent:"flex-start"}}>
               <div style={{padding:"0.65rem 0.9rem",borderRadius:"16px 16px 16px 4px",background:C.sandLight}}>
@@ -1390,7 +1400,7 @@ function ItineraryBuilder({trip,onItineraryChange}){
           )}
         </div>
       )}
-      <div style={{display:"flex",gap:"0.5rem"}}>
+      <div style={{display:"flex",gap:"0.5rem",marginBottom:"0.6rem"}}>
         <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send(input)}
           placeholder={`Ask about ${trip.destination} or request a change…`}
           style={{flex:1,padding:"0.65rem 0.9rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:10,fontSize:"0.88rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
@@ -1398,6 +1408,14 @@ function ItineraryBuilder({trip,onItineraryChange}){
           style={{padding:"0.65rem 1rem",background:input.trim()&&!loading?C.terracotta:C.parchment,color:input.trim()&&!loading?C.white:C.muted,border:"none",borderRadius:10,fontSize:"0.88rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
           →
         </button>
+      </div>
+      <div style={{display:"flex",gap:"0.4rem",overflowX:"auto",paddingBottom:"0.2rem",WebkitOverflowScrolling:"touch"}}>
+        {chips.map(c=>(
+          <button key={c.l} onClick={()=>send(c.l)} disabled={loading}
+            style={{padding:"0.3rem 0.75rem",background:C.sandLight,border:`1px solid ${C.border}`,borderRadius:20,fontSize:"0.75rem",color:C.espresso,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:"0.3rem",whiteSpace:"nowrap",flexShrink:0,opacity:loading?0.5:1}}>
+            {c.e} {c.l}
+          </button>
+        ))}
       </div>
     </div>
   );
