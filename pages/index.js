@@ -87,6 +87,10 @@ function BookingScreen({trip,onBack,onDone,onSummary}){
   // Flights
   const[flightSearchOpened,setFlightSearchOpened]=useState(false);
   const[bookedFlight,setBookedFlight]=useState(null);
+  const[flightNum,setFlightNum]=useState("");
+  const[flightDeparts,setFlightDeparts]=useState("");
+  const[flightArrives,setFlightArrives]=useState("");
+  const[flightDetailsSaved,setFlightDetailsSaved]=useState(false);
   // When to go
   const[whenType,setWhenType]=useState(null);
   const[whenInsight,setWhenInsight]=useState(null);
@@ -465,9 +469,37 @@ function BookingScreen({trip,onBack,onDone,onSummary}){
           </button>
         )}
         {bookedFlight&&(
-          <div style={{background:C.espresso,borderRadius:12,padding:"1rem",marginBottom:"0.75rem",display:"flex",alignItems:"center",gap:"0.75rem"}}>
-            <span style={{fontSize:"1.2rem"}}>✅</span>
-            <div><p style={{fontSize:"0.85rem",fontWeight:600,color:C.sand,margin:0}}>Flights booked!</p><p style={{fontSize:"0.75rem",color:"rgba(242,232,217,0.6)",margin:0,fontWeight:300}}>{departDate} → {returnDate} · saved to your trip</p></div>
+          <div style={{marginBottom:"0.75rem"}}>
+            <div style={{background:C.espresso,borderRadius:12,padding:"0.85rem 1rem",marginBottom:"0.65rem",display:"flex",alignItems:"center",gap:"0.75rem"}}>
+              <span style={{fontSize:"1.2rem"}}>✅</span>
+              <div><p style={{fontSize:"0.85rem",fontWeight:600,color:C.sand,margin:0}}>Flights confirmed!</p><p style={{fontSize:"0.72rem",color:"rgba(242,232,217,0.6)",margin:0,fontWeight:300}}>{departDate} → {returnDate}</p></div>
+            </div>
+            {!flightDetailsSaved?(
+              <div style={{background:C.white,borderRadius:12,border:`1px solid ${C.border}`,padding:"1rem"}}>
+                <p style={{fontSize:"0.72rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.75rem"}}>Add flight details (optional)</p>
+                <p style={{fontSize:"0.8rem",color:C.muted,margin:"0 0 0.85rem",lineHeight:1.5,fontWeight:300}}>Zirvoy will use these to optimise your Day 1 itinerary around your arrival time.</p>
+                <input value={flightNum} onChange={e=>setFlightNum(e.target.value)} placeholder="Flight number e.g. EZY1234"
+                  style={{width:"100%",padding:"0.65rem 0.85rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:8,fontSize:"0.85rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.5rem",boxSizing:"border-box"}}/>
+                <div style={{display:"flex",gap:"0.5rem",marginBottom:"0.75rem"}}>
+                  <input value={flightDeparts} onChange={e=>setFlightDeparts(e.target.value)} placeholder="Departs e.g. 06:45"
+                    style={{flex:1,padding:"0.65rem 0.85rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:8,fontSize:"0.85rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
+                  <input value={flightArrives} onChange={e=>setFlightArrives(e.target.value)} placeholder="Arrives e.g. 10:30"
+                    style={{flex:1,padding:"0.65rem 0.85rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:8,fontSize:"0.85rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
+                </div>
+                <div style={{display:"flex",gap:"0.5rem"}}>
+                  <button onClick={async()=>{
+                    try{
+                      const{data:saved}=await supabase.from("trips").select("id").eq("destination",trip.destination).order("created_at",{ascending:false}).limit(1);
+                      if(saved?.[0]?.id)await supabase.from("trips").update({trip_data:{...trip,isBooked:true,departDate,returnDate,flightNumber:flightNum,departureTime:flightDeparts,arrivalTime:flightArrives}}).eq("id",saved[0].id);
+                    }catch(e){}
+                    setFlightDetailsSaved(true);
+                  }} style={{flex:2,padding:"0.65rem",background:C.terracotta,color:C.white,border:"none",borderRadius:8,fontSize:"0.82rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Save details →</button>
+                  <button onClick={()=>setFlightDetailsSaved(true)} style={{flex:1,padding:"0.65rem",background:"transparent",color:C.muted,border:`1px solid ${C.border}`,borderRadius:8,fontSize:"0.8rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Skip</button>
+                </div>
+              </div>
+            ):(
+              <div style={{background:C.parchment,borderRadius:10,padding:"0.65rem 1rem",fontSize:"0.8rem",color:C.muted,fontWeight:300}}>{flightNum||"Flight details"} · {flightDeparts&&flightArrives?`${flightDeparts} → ${flightArrives}`:"saved to trip"} ✓</div>
+            )}
           </div>
         )}
         <button onClick={()=>setStep(1)}
@@ -715,7 +747,7 @@ function MyTripsScreen({trips,onTripClick,onSummary,onPlanNew,onDeleteTrip,destI
 
 function AccountScreen({profile,onSignOut,destImages=[]}){return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif",paddingBottom:80}}><CyclingHeader images={destImages} minH="200px"><div style={{padding:"3rem 1.5rem 2.5rem"}}><ZirvoyLogo light/><div style={{marginTop:"1.5rem",display:"flex",alignItems:"center",gap:"1rem"}}><div style={{width:52,height:52,borderRadius:"50%",background:"rgba(196,98,45,0.2)",border:`1.5px solid ${C.terracotta}`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.4rem",fontWeight:600,color:C.sand}}>{(profile?.first_name?.[0]||"Z").toUpperCase()}</span></div><div><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.4rem",fontWeight:600,color:C.sand,margin:0}}>{profile?.first_name} {profile?.last_name}</p><p style={{fontSize:"0.8rem",color:"rgba(242,232,217,0.5)",margin:"0.1rem 0 0",fontWeight:300}}>{profile?.email}</p></div></div></div></CyclingHeader><div style={{padding:"1.5rem"}}><div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.25rem",marginBottom:"1rem",boxShadow:"0 2px 12px rgba(28,20,16,0.05)"}}><p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 1rem"}}>Your Details</p>{[["Home Airport",profile?.home_airport||"Not set"],["Nationality",profile?.nationality||"Not set"],["Date of Birth",profile?.date_of_birth||"Not set"]].map(([label,val])=>(<div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:"0.85rem",marginBottom:"0.85rem",borderBottom:`1px solid ${C.parchment}`}}><span style={{fontSize:"0.85rem",color:C.muted}}>{label}</span><span style={{fontSize:"0.85rem",color:C.espresso,fontWeight:500}}>{val}</span></div>))}<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"0.85rem",color:C.muted}}>Passport</span><span style={{fontSize:"0.85rem",color:profile?.passport_number?C.espresso:C.muted,fontWeight:profile?.passport_number?500:300}}>{profile?.passport_number?"••••••••••":"Not added"}</span></div></div>{!profile?.passport_number&&(<div style={{background:C.parchment,borderRadius:14,padding:"1rem 1.1rem",marginBottom:"1rem",border:`1px solid ${C.border}`}}><p style={{fontSize:"0.8rem",fontWeight:600,color:C.espresso,margin:"0 0 0.25rem"}}>💡 Speed up booking</p><p style={{fontSize:"0.78rem",color:C.muted,margin:0,lineHeight:1.5,fontWeight:300}}>Add your passport details and we'll pre-fill them when you book.</p></div>)}<button onClick={onSignOut} style={{width:"100%",padding:"1rem",background:"transparent",color:"#c0392b",border:"1.5px solid #c0392b",borderRadius:14,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"0.5rem"}}>Sign Out</button></div></div>);}
 
-function LandingPage({onCreateAccount,onLogin,onDecide}){
+function LandingPage({onCreateAccount,onLogin,onDecide,onStartPlanning}){
   const[photos,setPhotos]=useState([]);
   const[current,setCurrent]=useState(0);
   const[imgLoaded,setImgLoaded]=useState({});
@@ -765,8 +797,11 @@ function LandingPage({onCreateAccount,onLogin,onDecide}){
             Tell Zirvoy your dream trip and get a full AI-generated plan — flights, hotel, itinerary — in seconds.
           </p>
           <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
-            <Btn onClick={onCreateAccount} variant="primary" style={{fontSize:"0.98rem",padding:"1.1rem"}}>Sign up to start planning</Btn>
-            <Btn onClick={onLogin} variant="outline">Log in to your account</Btn>
+            <Btn onClick={onStartPlanning||onCreateAccount} variant="primary" style={{fontSize:"0.98rem",padding:"1.1rem"}}>Start planning free →</Btn>
+            <div style={{display:"flex",gap:"0.6rem"}}>
+              <Btn onClick={onCreateAccount} variant="outline" style={{flex:1,fontSize:"0.88rem",padding:"0.85rem"}}>Sign up</Btn>
+              <Btn onClick={onLogin} variant="outline" style={{flex:1,fontSize:"0.88rem",padding:"0.85rem"}}>Log in</Btn>
+            </div>
           </div>
           {photos.length>1&&(
             <div style={{display:"flex",gap:5,justifyContent:"center",marginTop:"1.75rem"}}>
@@ -787,7 +822,62 @@ function SignUpScreen({onSuccess,onLogin}){const[step,setStep]=useState(1);const
 
 function LoginScreen({onSuccess,onCreateAccount}){const[form,setForm]=useState({email:"",password:""});const[loading,setLoading]=useState(false);const[error,setError]=useState(null);const set=(k)=>(e)=>setForm(f=>({...f,[k]:e.target.value}));const valid=form.email&&form.password;const handleLogin=async()=>{setLoading(true);setError(null);try{const{data,error:ae}=await supabase.auth.signInWithPassword({email:form.email,password:form.password});if(ae)throw ae;onSuccess(data.user);}catch(e){setError("Incorrect email or password — please try again.");}finally{setLoading(false);};};return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif"}}><div style={{background:C.espresso,padding:"2rem 1.5rem 2.5rem",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/><div style={{position:"relative"}}><ZirvoyLogo light/><h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"2rem",fontWeight:600,color:C.sand,margin:"1.25rem 0 0.35rem"}}>Welcome back</h2><p style={{fontSize:"0.85rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>Log in to access your trips</p></div></div><div style={{padding:"1.75rem 1.5rem",maxWidth:480,margin:"0 auto"}}>{error&&<div style={{background:"#fde8e8",border:"1px solid #e07070",borderRadius:10,padding:"0.75rem 1rem",marginBottom:"1rem",fontSize:"0.85rem",color:"#c0392b"}}>{error}</div>}<Input label="Email" type="email" value={form.email} onChange={set("email")} placeholder="john@example.com"/><Input label="Password" type="password" value={form.password} onChange={set("password")} placeholder="Your password"/><Btn onClick={handleLogin} disabled={!valid||loading}>{loading?"Logging in…":"Log In →"}</Btn><p style={{textAlign:"center",fontSize:"0.85rem",color:C.muted,marginTop:"1.25rem"}}>Don't have an account?{" "}<span onClick={onCreateAccount} style={{color:C.terracotta,cursor:"pointer",fontWeight:500}}>Create one</span></p></div></div>);}
 
-function LoadingScreen({input}){const[step,setStep]=useState(0);const steps=["Scouting your perfect destination…","Crafting a bespoke itinerary…","Calculating the best budget…","Adding insider knowledge…"];useEffect(()=>{const t=setInterval(()=>setStep(s=>(s+1)%steps.length),1200);return()=>clearInterval(t);},[]);return(<div style={{minHeight:"100vh",background:C.espresso,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"2rem",fontFamily:"'DM Sans',sans-serif"}}><div style={{animation:"pulse 2s ease-in-out infinite",marginBottom:"2rem"}}><ZirvoyMark size={56} color={C.terracotta}/></div><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.4rem",fontStyle:"italic",color:C.sand,margin:"0 0 1.25rem",textAlign:"center",lineHeight:1.5,maxWidth:320}}>"{input}"</p><p style={{fontSize:"0.75rem",color:C.terracotta,letterSpacing:"0.14em",textTransform:"uppercase",textAlign:"center"}}>{steps[step]}</p><div style={{display:"flex",gap:6,marginTop:"2rem"}}>{[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:C.terracotta,opacity:step%3===i?1:0.25,transition:"opacity 0.4s"}}/>)}</div></div>);}
+function LoadingScreen({input}){
+  const[prog,setProg]=useState(0);
+  const steps=["Choosing the perfect destination","Crafting your day-by-day itinerary","Researching flights & hotels","Adding local insider tips"];
+  const cur=Math.min(Math.floor((prog/100)*steps.length),steps.length-1);
+  useEffect(()=>{
+    const start=Date.now();const dur=13000;
+    const t=setInterval(()=>{const p=Math.min(((Date.now()-start)/dur)*95,95);setProg(p);},120);
+    return()=>clearInterval(t);
+  },[]);
+  return(
+    <div style={{minHeight:"100vh",background:C.espresso,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"2rem",fontFamily:"'DM Sans',sans-serif"}}>
+      <div style={{animation:"pulse 2s ease-in-out infinite",marginBottom:"2rem"}}><ZirvoyMark size={52} color={C.terracotta}/></div>
+      {input&&<p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.25rem",fontStyle:"italic",color:"rgba(242,232,217,0.55)",margin:"0 0 2rem",textAlign:"center",lineHeight:1.5,maxWidth:320}}>"{input}"</p>}
+      <div style={{width:"100%",maxWidth:280,marginBottom:"1.5rem"}}>
+        {steps.map((s,i)=>{
+          const done=i<cur;const active=i===cur;
+          return(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:12,marginBottom:"0.9rem",opacity:i<=cur?1:0.28,transition:"opacity 0.5s"}}>
+              <div style={{width:20,height:20,borderRadius:"50%",background:done?C.terracotta:active?"rgba(196,98,45,0.25)":"rgba(242,232,217,0.08)",border:`1.5px solid ${done?C.terracotta:active?C.terracotta:"rgba(242,232,217,0.12)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.4s"}}>
+                {done&&<span style={{color:C.white,fontSize:"0.62rem",lineHeight:1}}>✓</span>}
+                {active&&<div style={{width:6,height:6,borderRadius:"50%",background:C.terracotta,animation:"pulse 1.5s ease-in-out infinite"}}/>}
+              </div>
+              <span style={{fontSize:"0.82rem",color:done?C.terra2:active?C.sand:"rgba(242,232,217,0.3)",fontWeight:active?500:300,transition:"color 0.4s"}}>{s}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{width:240,height:2,background:"rgba(242,232,217,0.08)",borderRadius:2}}>
+        <div style={{height:"100%",width:`${prog}%`,background:`linear-gradient(90deg,${C.terracotta},${C.gold})`,borderRadius:2,transition:"width 0.12s linear"}}/>
+      </div>
+    </div>
+  );
+}
+
+function AuthPromptModal({reason,onClose,onSignUp,onLogin}){
+  const msgs={
+    save:{headline:"Save your trip",body:"Create a free account to save this trip and access it anytime."},
+    book:{headline:"Ready to book?",body:"Create a free account to start booking — we'll save your plan and help you track everything."},
+    trips:{headline:"Your trips",body:"Create a free account to save trips, track bookings and plan in detail."},
+    default:{headline:"Join Zirvoy free",body:"Create a free account to save trips and start planning your booking."},
+  };
+  const m=msgs[reason]||msgs.default;
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(28,20,16,0.7)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
+      <div style={{width:"100%",maxWidth:640,background:C.sandLight,borderRadius:"22px 22px 0 0",padding:"1.75rem 1.5rem 2.5rem"}}>
+        <div style={{width:36,height:3.5,background:C.parchment,borderRadius:2,margin:"0 auto 1.5rem"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:"0.35rem"}}><ZirvoyMark size={18} color={C.terracotta}/><span style={{fontSize:"0.65rem",fontWeight:600,color:C.terracotta,textTransform:"uppercase",letterSpacing:"0.16em"}}>Free to join</span></div>
+        <h3 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.75rem",fontWeight:600,color:C.espresso,margin:"0 0 0.5rem"}}>{m.headline}</h3>
+        <p style={{fontSize:"0.88rem",color:C.muted,margin:"0 0 1.75rem",lineHeight:1.6,fontWeight:300}}>{m.body}</p>
+        <button onClick={onSignUp} style={{width:"100%",padding:"1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.65rem"}}>Create free account →</button>
+        <button onClick={onLogin} style={{width:"100%",padding:"0.85rem",background:"transparent",color:C.espresso,border:`1.5px solid ${C.border}`,borderRadius:12,fontSize:"0.9rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.5rem"}}>Log in to your account</button>
+        <button onClick={onClose} style={{width:"100%",padding:"0.65rem",background:"transparent",color:C.muted,border:"none",fontSize:"0.85rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Maybe later</button>
+      </div>
+    </div>
+  );
+}
 
 function TripStoryScreen({trip,onSkip,onBook}){
   const SLIDE_DURATION=4500;
@@ -880,6 +970,14 @@ function DecideModal({onClose,onGenerate}){
       {emoji:"💎",label:"Luxury",sub:"£1,000–2,000pp",value:"a luxury budget of around £1,500 per person"},
       {emoji:"🤑",label:"No limit",sub:"Go all out",value:"no budget limit, spare no expense"},
     ]},
+    {id:"when",q:"When are you thinking?",sub:"Helps Zirvoy suggest the ideal time to visit",options:[
+      {emoji:"🔜",label:"ASAP",sub:"Next few months",value:"as soon as possible in the next few months"},
+      {emoji:"☀️",label:"Summer",sub:"Jun–Aug",value:"over summer (June to August)"},
+      {emoji:"🍂",label:"Autumn",sub:"Sep–Nov",value:"in autumn (September to November)"},
+      {emoji:"❄️",label:"Winter",sub:"Dec–Feb",value:"over winter (December to February)"},
+      {emoji:"🌸",label:"Spring",sub:"Mar–May",value:"in spring (March to May)"},
+      {emoji:"🤷",label:"Flexible",sub:"Best time for trip",value:"whenever is best for this destination"},
+    ]},
   ];
   const[step,setStep]=useState(0);
   const[answers,setAnswers]=useState({});
@@ -889,7 +987,7 @@ function DecideModal({onClose,onGenerate}){
     setAnswers(a);
     if(step<questions.length-1){setStep(step+1);}
     else{
-      const req=`I want to go to ${a.type}, ${a.flight}, the vibe should be ${a.vibe}, travelling as ${a.who}, with ${a.budget}. Build me the perfect trip.`;
+      const req=`I want to go to ${a.type}, ${a.flight}, the vibe should be ${a.vibe}, travelling as ${a.who}, with ${a.budget}, going ${a.when||"whenever suits best"}. Build me the perfect trip.`;
       onClose();
       onGenerate(req);
     }
@@ -1021,7 +1119,7 @@ function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,loading,
   );
 }
 
-function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveTrip,isSaved,onShowStory,onPlanTrip}){
+function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveTrip,isSaved,onShowStory,onPlanTrip,tripId}){
   const[trip,setTrip]=useState(initialTrip);
   const[activeDay,setActiveDay]=useState(0);
   const[imgLoaded,setImgLoaded]=useState(false);
@@ -1061,7 +1159,8 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
 
   const handleDayClick=(i)=>{setActiveDay(i);if(dayImages[i]===undefined)fetchDayImage(i);};
 
-  const shareText=`I'm going to ${trip.destination}! 🌍 ${trip.duration} nights planned with Zirvoy — zirvoy.com`;
+  const shareUrl=tripId?`https://zirvoy.com/trip/${tripId}`:null;
+  const shareText=shareUrl?`I'm going to ${trip.destination}! 🌍 ${trip.duration} nights planned with Zirvoy — ${shareUrl}`:`I'm going to ${trip.destination}! 🌍 ${trip.duration} nights planned with Zirvoy — zirvoy.com`;
   const shareWhatsApp=()=>{window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank");};
   const copyShare=()=>{
     const fallback=()=>{
@@ -1619,6 +1718,7 @@ export default function Home(){
   const[screen,setScreen]=useState("home");
   const[trip,setTrip]=useState(null);
   const[tripSaved,setTripSaved]=useState(false);
+  const[savedTripId,setSavedTripId]=useState(null);
   const[loading,setLoading]=useState(false);
   const[error,setError]=useState(null);
   const[originalRequest,setOriginalRequest]=useState("");
@@ -1630,6 +1730,8 @@ export default function Home(){
   const[pendingDecide,setPendingDecide]=useState(false);
   const[destImages,setDestImages]=useState([]);
   const[showSummary,setShowSummary]=useState(false);
+  const[showAuthPrompt,setShowAuthPrompt]=useState(false);
+  const[authPromptAction,setAuthPromptAction]=useState(null);
 
   useEffect(()=>{fetch("/api/destinations").then(r=>r.json()).then(d=>{if(d.photos?.length)setDestImages(d.photos.map(p=>p.url));}).catch(()=>{});},[]);
 
@@ -1650,20 +1752,28 @@ export default function Home(){
 
   const saveTrip=async(userId,tripData)=>{
     try{
-      const{error:insertError}=await supabase.from("trips").insert({
+      const{data:inserted,error:insertError}=await supabase.from("trips").insert({
         user_id:userId,
         destination:tripData.destination,
         country:tripData.country,
         trip_data:tripData,
-      });
+      }).select().single();
       if(insertError){console.error("Save error:",insertError);setSaveError(insertError.message||"Failed to save trip");return false;}
+      if(inserted?.id)setSavedTripId(inserted.id);
       await loadUserData(userId);
       return true;
     }catch(e){console.error("Save failed:",e);return false;}
   };
 
   const deleteTrip=async(tripId)=>{await supabase.from("trips").delete().eq("id",tripId);setTrips(prev=>prev.filter(t=>t.id!==tripId));};
-  const handleAuthSuccess=async(newUser)=>{setUser(newUser);if(newUser)await loadUserData(newUser.id);setAuthScreen("app");if(pendingDecide){setShowDecide(true);setPendingDecide(false);}};
+  const handleAuthSuccess=async(newUser)=>{
+    setUser(newUser);
+    if(newUser)await loadUserData(newUser.id);
+    setAuthScreen("app");
+    // Auto-save any trip generated while browsing as guest
+    if(newUser&&trip&&!tripSaved){const saved=await saveTrip(newUser.id,trip);if(saved)setTripSaved(true);}
+    if(pendingDecide){setShowDecide(true);setPendingDecide(false);}
+  };
   const handleSignOut=async()=>{await supabase.auth.signOut();setUser(null);setProfile(null);setTrips([]);setAuthScreen("splash");setScreen("home");setTrip(null);setActiveTab("home");};
 
   const generate=async(request)=>{
@@ -1681,7 +1791,11 @@ export default function Home(){
     finally{setLoading(false);}
   };
 
-  const handleManualSave=async()=>{if(!user||!trip)return;const saved=await saveTrip(user.id,trip);if(saved)setTripSaved(true);};
+  const handleManualSave=async()=>{
+    if(!trip)return;
+    if(!user){setAuthPromptAction("save");setShowAuthPrompt(true);return;}
+    const saved=await saveTrip(user.id,trip);if(saved)setTripSaved(true);
+  };
   const handleGenerate=(req)=>{setOriginalRequest(req);generate(req);};
   const handleRefine=(extra)=>generate(`${originalRequest}. Additional preferences: ${extra}`);
   const handleNewTrip=()=>{setTrip(null);setOriginalRequest("");setError(null);setTripSaved(false);setShowStory(false);setShowBooking(false);setShowSummary(false);setScreen("home");setActiveTab("home");};
@@ -1689,8 +1803,14 @@ export default function Home(){
   const handleSummaryClick=(t)=>{setTrip(t.trip_data);setTripSaved(true);setShowStory(false);setShowBooking(false);setShowSummary(true);setActiveTab("home");};
   const handleOpenSummary=()=>{setShowSummary(true);setShowBooking(false);};
   const handleTripUpdate=(updated)=>{setTrip(updated);};
-  const handleLetsBook=()=>{setShowBooking(true);setShowStory(false);setShowSummary(false);};
-  const handleTabChange=(tab)=>{setActiveTab(tab);if(tab==="home"&&screen!=="results"&&!showSummary)setScreen("home");};
+  const handleLetsBook=()=>{
+    if(!user){setAuthPromptAction("book");setShowAuthPrompt(true);return;}
+    setShowBooking(true);setShowStory(false);setShowSummary(false);
+  };
+  const handleTabChange=(tab)=>{
+    if((tab==="trips"||tab==="account")&&!user){setAuthPromptAction("trips");setShowAuthPrompt(true);return;}
+    setActiveTab(tab);if(tab==="home"&&screen!=="results"&&!showSummary)setScreen("home");
+  };
 
   if(authLoading)return(<div style={{minHeight:"100vh",background:C.espresso,display:"flex",alignItems:"center",justifyContent:"center"}}><style>{FONT_STYLE}</style><div style={{animation:"pulse 2s ease-in-out infinite"}}><ZirvoyMark size={48} color={C.terracotta}/></div></div>);
 
@@ -1708,31 +1828,48 @@ export default function Home(){
     {error&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:"#c0392b",color:"#fff",padding:"0.75rem 1.25rem",borderRadius:10,fontSize:"0.85rem",fontFamily:"'DM Sans',sans-serif",zIndex:200,maxWidth:"90vw",textAlign:"center"}}>{error} — please try again.</div>}
     {saveError&&<div onClick={()=>setSaveError(null)} style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:"#c0392b",color:"#fff",padding:"0.75rem 1.25rem",borderRadius:10,fontSize:"0.85rem",fontFamily:"'DM Sans',sans-serif",zIndex:200,maxWidth:"90vw",textAlign:"center",cursor:"pointer"}}>Trip not saved: {saveError}</div>}
 
-    {!user&&authScreen==="splash"&&<LandingPage onCreateAccount={()=>setAuthScreen("signup")} onLogin={()=>setAuthScreen("login")} onDecide={()=>{setPendingDecide(true);setAuthScreen("signup");}}/>}
-    {!user&&authScreen==="signup"&&<SignUpScreen onSuccess={handleAuthSuccess} onLogin={()=>setAuthScreen("login")}/>}
-    {!user&&authScreen==="login"&&<LoginScreen onSuccess={handleAuthSuccess} onCreateAccount={()=>setAuthScreen("signup")}/>}
+    {/* Auth screens — full screen */}
+    {authScreen==="signup"&&<SignUpScreen onSuccess={handleAuthSuccess} onLogin={()=>setAuthScreen("login")}/>}
+    {authScreen==="login"&&<LoginScreen onSuccess={handleAuthSuccess} onCreateAccount={()=>setAuthScreen("signup")}/>}
 
-    {user&&(<>
-      {loading&&<LoadingScreen input={originalRequest}/>}
+    {/* Landing — for fresh non-users */}
+    {!user&&authScreen==="splash"&&<LandingPage onCreateAccount={()=>setAuthScreen("signup")} onLogin={()=>setAuthScreen("login")} onDecide={()=>{setPendingDecide(true);setAuthScreen("signup");}} onStartPlanning={()=>setAuthScreen("app")}/>}
+
+    {/* App — open to everyone once in "app" mode */}
+    {(user||authScreen==="app")&&authScreen!=="signup"&&authScreen!=="login"&&(<>
+
+      {showAuthPrompt&&<AuthPromptModal reason={authPromptAction} onClose={()=>setShowAuthPrompt(false)} onSignUp={()=>{setShowAuthPrompt(false);setAuthScreen("signup");}} onLogin={()=>{setShowAuthPrompt(false);setAuthScreen("login");}}/>}
+
+      {/* Full loading screen only on fresh generation (no existing trip in state) */}
+      {loading&&!trip&&<LoadingScreen input={originalRequest}/>}
+
+      {/* Overlay for refine/update (trip already exists) */}
+      {loading&&trip&&<div style={{position:"fixed",inset:0,background:"rgba(28,20,16,0.55)",zIndex:150,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}><div style={{background:C.espresso,borderRadius:20,padding:"2rem 2.5rem",textAlign:"center",maxWidth:280}}><div style={{animation:"pulse 2s ease-in-out infinite",marginBottom:"1rem"}}><ZirvoyMark size={40} color={C.terracotta}/></div><p style={{color:C.sand,fontFamily:"'Cormorant Garamond',serif",fontSize:"1.2rem",margin:"0 0 0.35rem"}}>Updating your trip…</p><p style={{color:"rgba(242,232,217,0.5)",fontSize:"0.78rem",margin:0,fontWeight:300}}>Applying your changes</p></div></div>}
 
       {!loading&&screen==="results"&&trip&&showStory&&!showBooking&&(
         <TripStoryScreen trip={trip} onSkip={()=>setShowStory(false)} onBook={handleLetsBook}/>
       )}
 
       {!loading&&screen==="results"&&trip&&showBooking&&(
-        <BookingScreen trip={trip} onBack={()=>setShowBooking(false)} onDone={()=>{setShowBooking(false);setActiveTab("trips");}} onSummary={()=>{setShowBooking(false);setShowSummary(true);}}/>
+        <BookingScreen trip={trip} onBack={()=>setShowBooking(false)} onDone={()=>{setShowBooking(false);if(user)setActiveTab("trips");}} onSummary={()=>{setShowBooking(false);setShowSummary(true);}}/>
       )}
 
       {!loading&&trip&&showSummary&&!showBooking&&(
         <TripSummaryScreen trip={trip} onBack={()=>setShowSummary(false)} onBook={handleLetsBook} onTripUpdate={handleTripUpdate}/>
       )}
 
-      {!loading&&!(showStory&&screen==="results")&&!showBooking&&!showSummary&&(<>
+      {!(showStory&&screen==="results")&&!showBooking&&!showSummary&&(<>
         {activeTab==="home"&&screen==="home"&&<HomeScreen user={user} profile={profile} trips={trips} onGenerate={handleGenerate} onDecide={()=>setShowDecide(true)} onTripClick={handleTripClick} loading={loading} destImages={destImages}/>}
         {showDecide&&<DecideModal onClose={()=>setShowDecide(false)} onGenerate={handleGenerate}/>}
-        {activeTab==="home"&&screen==="results"&&trip&&(<><ResultsScreen trip={trip} onNewTrip={handleNewTrip} onTryAgain={()=>setShowRefine(true)} onLetsBook={handleLetsBook} onSaveTrip={handleManualSave} isSaved={tripSaved} onShowStory={trip.storySlides?.length>0?()=>setShowStory(true):undefined} onPlanTrip={handleOpenSummary}/>{showRefine&&<RefineModal destination={trip.destination} onClose={()=>setShowRefine(false)} onRefine={handleRefine} loading={loading}/>}</>)}
-        {activeTab==="trips"&&<MyTripsScreen trips={trips} onTripClick={handleTripClick} onSummary={handleSummaryClick} onDeleteTrip={deleteTrip} onPlanNew={()=>{setActiveTab("home");setScreen("home");}} destImages={destImages}/>}
-        {activeTab==="account"&&<AccountScreen profile={profile} onSignOut={handleSignOut} destImages={destImages}/>}
+        {activeTab==="home"&&screen==="results"&&trip&&(<><ResultsScreen trip={trip} onNewTrip={handleNewTrip} onTryAgain={()=>setShowRefine(true)} onLetsBook={handleLetsBook} onSaveTrip={handleManualSave} isSaved={tripSaved} onShowStory={trip.storySlides?.length>0?()=>setShowStory(true):undefined} onPlanTrip={handleOpenSummary} tripId={savedTripId}/>{showRefine&&<RefineModal destination={trip.destination} onClose={()=>setShowRefine(false)} onRefine={handleRefine} loading={loading}/>}</>)}
+        {activeTab==="trips"&&(user
+          ?<MyTripsScreen trips={trips} onTripClick={handleTripClick} onSummary={handleSummaryClick} onDeleteTrip={deleteTrip} onPlanNew={()=>{setActiveTab("home");setScreen("home");}} destImages={destImages}/>
+          :<div style={{minHeight:"100vh",background:C.sandLight,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"1rem",fontFamily:"'DM Sans',sans-serif",padding:"2rem",paddingBottom:80}}><ZirvoyMark size={42} color={C.terracotta}/><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.5rem",color:C.espresso,margin:0,textAlign:"center"}}>Sign in to see your trips</p><p style={{fontSize:"0.85rem",color:C.muted,margin:0,fontWeight:300,textAlign:"center"}}>Save and manage all your planned trips</p><button onClick={()=>setAuthScreen("signup")} style={{padding:"0.9rem 2rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.9rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Create free account →</button><button onClick={()=>setAuthScreen("login")} style={{background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"0.85rem"}}>Log in</button></div>
+        )}
+        {activeTab==="account"&&(user
+          ?<AccountScreen profile={profile} onSignOut={handleSignOut} destImages={destImages}/>
+          :<div style={{minHeight:"100vh",background:C.sandLight,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"1rem",fontFamily:"'DM Sans',sans-serif",padding:"2rem",paddingBottom:80}}><ZirvoyMark size={42} color={C.terracotta}/><p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.5rem",color:C.espresso,margin:0,textAlign:"center"}}>Sign in to your account</p><button onClick={()=>setAuthScreen("signup")} style={{padding:"0.9rem 2rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.9rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Create free account →</button><button onClick={()=>setAuthScreen("login")} style={{background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontSize:"0.85rem"}}>Log in</button></div>
+        )}
         <BottomNav active={activeTab} onChange={handleTabChange}/>
       </>)}
     </>)}

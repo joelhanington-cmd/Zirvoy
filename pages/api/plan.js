@@ -120,9 +120,9 @@ The JSON must follow this exact structure:
     {
       "day": 1,
       "title": "Short evocative day title",
-      "morning": "What to do in the morning — specific, vivid, practical",
-      "afternoon": "What to do in the afternoon",
-      "evening": "What to do in the evening"
+      "morning": "Specific activity with named attraction. Breakfast at [REAL CAFÉ NAME] — mention what to order.",
+      "afternoon": "Afternoon activity at named location. Lunch at [REAL RESTAURANT NAME] — one specific dish to try.",
+      "evening": "Evening experience. Dinner at [REAL RESTAURANT NAME] — why it's worth it and what to book. Mention a specific bar or area for after."
     }
   ]
 }
@@ -132,7 +132,8 @@ Rules:
 - budgetPerPerson must equal budgetTotal divided by travellers
 - itinerary length must match duration field exactly
 - All budget figures in GBP
-- Be specific with restaurant names, attraction names, neighbourhood names
+- CRITICAL: Every single morning/afternoon/evening MUST name at least one specific real restaurant, café or bar — never say "find a local restaurant" or "grab lunch somewhere". Always use real names.
+- Name specific streets, squares, neighbourhoods — never say "explore the old town" without naming it
 - The tip must be genuinely useful — never generic
 - weather.avoidMonths can be null if there are no genuinely bad months
 - imageQuery values must be 2-3 words, specific enough to return a beautiful relevant photo
