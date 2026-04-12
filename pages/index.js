@@ -700,7 +700,7 @@ function MyTripsScreen({trips,onTripClick,onSummary,onPlanNew,onDeleteTrip,destI
               <div style={{marginBottom:"1.25rem"}}>
                 {bookedTrips.length>0&&<p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.65rem"}}>Ideas & plans</p>}
                 <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
-                  {unbookedTrips.map(t=>(<SwipeableTrip key={t.id} t={t} onTripClick={onTripClick} onDelete={onDeleteTrip}/>))}
+                  {unbookedTrips.map(t=>(<SwipeableTrip key={t.id} t={t} onTripClick={onSummary||onTripClick} onDelete={onDeleteTrip}/>))}
                 </div>
               </div>
             )}
@@ -944,10 +944,10 @@ function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,loading,
           <div style={{maxWidth:640,margin:"0 auto"}}>
             <ZirvoyLogo light/>
             <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"clamp(1.8rem,5vw,2.4rem)",fontWeight:600,color:C.sand,margin:"0.85rem 0 0.25rem",lineHeight:1.15}}>
-              {trips.length>0?`Welcome back, ${firstName}.`:`Where to, ${firstName}?`}
+              Where to, {firstName}?
             </h1>
             <p style={{color:"rgba(242,232,217,0.5)",fontSize:"0.82rem",margin:0,fontWeight:300}}>
-              {trips.length>0?"Plan your next adventure.":"Full AI trip plan in seconds."}
+              Full AI trip plan in seconds.
             </p>
           </div>
         </div>
@@ -969,7 +969,7 @@ function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,loading,
         {/* I'm open to ideas — prominent dark button */}
         <button onClick={onDecide} disabled={loading}
           style={{width:"100%",padding:"1rem",background:C.espresso,color:C.sand,border:"none",borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:loading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"1.5rem",opacity:loading?0.5:1,display:"flex",alignItems:"center",justifyContent:"center",gap:"0.5rem"}}>
-          ✨ I'm open to ideas
+          ✨ Help me decide
         </button>
 
         {/* Suggestion chips */}
@@ -1021,16 +1021,28 @@ function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,loading,
   );
 }
 
-function ResultsScreen({trip,onNewTrip,onTryAgain,onLetsBook,onSaveTrip,isSaved,onShowStory,onPlanTrip}){
+function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveTrip,isSaved,onShowStory,onPlanTrip}){
+  const[trip,setTrip]=useState(initialTrip);
   const[activeDay,setActiveDay]=useState(0);
   const[imgLoaded,setImgLoaded]=useState(false);
   const[saving,setSaving]=useState(false);
   const[saved,setSaved]=useState(isSaved);
   const[dayImages,setDayImages]=useState({});
   const[copied,setCopied]=useState(false);
+  const[tipLoading,setTipLoading]=useState(false);
   const day=trip.itinerary?.[activeDay];
   const handleSave=async()=>{setSaving(true);await onSaveTrip();setSaved(true);setSaving(false);};
   const labels={flights:"Flights",hotel:"Hotel",food:"Food & Drink",activities:"Activities",misc:"Extras"};
+
+  const refreshTip=async()=>{
+    setTipLoading(true);
+    try{
+      const r=await fetch("/api/tip",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({destination:trip.destination,country:trip.country})});
+      const d=await r.json();
+      if(d.tip)setTrip(t=>({...t,tip:d.tip}));
+    }catch(e){}
+    finally{setTipLoading(false);}
+  };
 
   const fetchDayImage=async(idx)=>{
     if(dayImages[idx]!==undefined)return;
@@ -1049,12 +1061,13 @@ function ResultsScreen({trip,onNewTrip,onTryAgain,onLetsBook,onSaveTrip,isSaved,
 
   const handleDayClick=(i)=>{setActiveDay(i);if(dayImages[i]===undefined)fetchDayImage(i);};
 
-  const shareWhatsApp=()=>{
-    const text=`I just planned a trip to ${trip.destination} with Zirvoy! 🌍 ${trip.duration} nights, £${fmt(trip.budgetTotal)} total. Check it out at zirvoy.com`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`,"_blank");
-  };
+  const shareText=`I'm going to ${trip.destination}! 🌍 ${trip.duration} nights planned with Zirvoy — zirvoy.com`;
+  const shareWhatsApp=()=>{window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank");};
   const copyShare=()=>{
-    navigator.clipboard.writeText(`Check out my trip to ${trip.destination} planned with Zirvoy — zirvoy.com`).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);}).catch(()=>{});
+    const fallback=()=>{
+      try{const el=document.createElement("textarea");el.value=shareText;el.style.position="fixed";el.style.opacity="0";document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch(e){}
+    };
+    if(navigator.clipboard?.writeText){navigator.clipboard.writeText(shareText).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2500);}).catch(fallback);}else{fallback();}
   };
 
   return(
@@ -1081,31 +1094,25 @@ function ResultsScreen({trip,onNewTrip,onTryAgain,onLetsBook,onSaveTrip,isSaved,
       <div style={{maxWidth:640,margin:"0 auto",padding:"1.25rem clamp(1.25rem,5vw,2rem) 3rem"}}>
         {/* (Story button now in hero corner) */}
 
-        {/* Share buttons */}
-        <div style={{display:"flex",gap:"0.5rem",marginBottom:"0.65rem"}}>
-          <button onClick={shareWhatsApp}
-            style={{flex:1,padding:"0.65rem",background:"#25D366",color:C.white,border:"none",borderRadius:10,fontSize:"0.8rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:"0.4rem"}}>
-            Share on WhatsApp
-          </button>
-          <button onClick={copyShare}
-            style={{flex:1,padding:"0.65rem",background:C.white,color:copied?C.terracotta:C.espresso,border:`1.5px solid ${copied?C.terracotta:C.border}`,borderRadius:10,fontSize:"0.8rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
-            {copied?"✓ Copied!":"Copy link"}
-          </button>
+        {/* Primary CTAs */}
+        <button onClick={onLetsBook} style={{width:"100%",padding:"1.05rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.5rem"}}>Let's Book This Trip →</button>
+
+        {/* Secondary row: plan detail + save */}
+        <div style={{display:"flex",gap:"0.5rem",marginBottom:"0.5rem"}}>
+          {onPlanTrip&&<button onClick={onPlanTrip} style={{flex:1,padding:"0.8rem",background:C.espresso,color:C.sand,border:"none",borderRadius:10,fontSize:"0.82rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",gap:"0.35rem"}}>🗓 Build itinerary</button>}
+          <button onClick={saved?undefined:handleSave} disabled={saved||saving} style={{flex:1,padding:"0.8rem",background:saved?C.parchment:C.white,color:saved?C.muted:C.espresso,border:`1.5px solid ${saved?C.border:C.espresso}`,borderRadius:10,fontSize:"0.82rem",fontWeight:500,cursor:saved?"default":"pointer",fontFamily:"'DM Sans',sans-serif"}}>{saving?"Saving…":saved?"✓ Saved":"Save"}</button>
         </div>
 
-        {/* Book + Save */}
-        <div style={{display:"flex",gap:"0.65rem",marginBottom:"1rem"}}>
-          <button onClick={onLetsBook} style={{flex:2,padding:"1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Let's Book This Trip →</button>
-          <button onClick={saved?undefined:handleSave} disabled={saved||saving} style={{flex:1,padding:"1rem",background:saved?C.parchment:C.espresso,color:saved?C.muted:C.sand,border:"none",borderRadius:12,fontSize:"0.82rem",fontWeight:500,cursor:saved?"default":"pointer",fontFamily:"'DM Sans',sans-serif"}}>{saving?"Saving…":saved?"✓ Saved":"Save Trip"}</button>
-        </div>
-
-        {/* Try again */}
-        <div style={{background:C.white,border:`1px solid ${C.border}`,borderRadius:14,padding:"0.85rem 1rem",marginBottom:"1rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
-            <div style={{fontSize:"0.8rem",fontWeight:500,color:C.espresso}}>Not quite right?</div>
-            <div style={{fontSize:"0.72rem",color:C.muted,marginTop:2,fontWeight:300}}>Tell Zirvoy what to change and we'll try again</div>
+        {/* Not quite right + Share */}
+        <div style={{display:"flex",gap:"0.5rem",marginBottom:"1rem"}}>
+          <button onClick={onTryAgain} style={{flex:1,padding:"0.7rem 0.85rem",background:C.white,color:C.espresso,border:`1.5px solid ${C.border}`,borderRadius:10,fontSize:"0.78rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"left"}}>
+            <div style={{fontWeight:600,marginBottom:2}}>Not quite right?</div>
+            <div style={{color:C.muted,fontSize:"0.7rem",fontWeight:300}}>Tell Zirvoy what to change</div>
+          </button>
+          <div style={{display:"flex",flexDirection:"column",gap:"0.35rem",flexShrink:0}}>
+            <button onClick={shareWhatsApp} style={{padding:"0.5rem 0.8rem",background:"#25D366",color:C.white,border:"none",borderRadius:8,fontSize:"0.75rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>WhatsApp</button>
+            <button onClick={copyShare} style={{padding:"0.5rem 0.8rem",background:copied?C.terracotta:C.white,color:copied?C.white:C.espresso,border:`1.5px solid ${copied?C.terracotta:C.border}`,borderRadius:8,fontSize:"0.75rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{copied?"✓ Copied":"Copy"}</button>
           </div>
-          <button onClick={onTryAgain} style={{flexShrink:0,padding:"0.5rem 1rem",background:C.espresso,color:C.sand,border:"none",borderRadius:8,fontSize:"0.78rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Refine</button>
         </div>
 
         {/* Budget */}
@@ -1128,7 +1135,10 @@ function ResultsScreen({trip,onNewTrip,onTryAgain,onLetsBook,onSaveTrip,isSaved,
         <div style={{background:C.espresso,borderRadius:18,padding:"1.4rem 1.5rem",marginBottom:"1rem",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",top:-25,right:-25,width:120,height:120,borderRadius:"50%",border:"1px solid rgba(196,98,45,0.18)"}}/>
           <div style={{position:"absolute",top:8,right:10,opacity:0.1}}><ZirvoyMark size={52} color={C.terracotta}/></div>
-          <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:"0.65rem"}}><div style={{width:3,height:12,background:C.terracotta,borderRadius:2}}/><p style={{fontSize:"0.65rem",fontWeight:600,color:C.terracotta,textTransform:"uppercase",letterSpacing:"0.16em",margin:0}}>Zirvoy Insider Tip</p></div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:7,marginBottom:"0.65rem"}}>
+            <div style={{display:"flex",alignItems:"center",gap:7}}><div style={{width:3,height:12,background:C.terracotta,borderRadius:2}}/><p style={{fontSize:"0.65rem",fontWeight:600,color:C.terracotta,textTransform:"uppercase",letterSpacing:"0.16em",margin:0}}>Zirvoy Insider Tip</p></div>
+            <button onClick={refreshTip} disabled={tipLoading} style={{background:"rgba(196,98,45,0.18)",border:"1px solid rgba(196,98,45,0.3)",color:C.terra2,padding:"0.25rem 0.65rem",borderRadius:20,fontSize:"0.68rem",fontWeight:500,cursor:tipLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif"}}>{tipLoading?"…":"↻ New tip"}</button>
+          </div>
           <p style={{margin:0,fontFamily:"'Cormorant Garamond',serif",fontSize:"1.1rem",color:C.sand,lineHeight:1.8,fontStyle:"italic"}}>{trip.tip}</p>
         </div>
 
@@ -1300,8 +1310,10 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
   const[dayImages,setDayImages]=useState({});
   const[flightNumber,setFlightNumber]=useState(trip.flightNumber||"");
   const[arrivalTime,setArrivalTime]=useState(trip.arrivalTime||"");
+  const[departureTime,setDepartureTime]=useState(trip.departureTime||"");
   const[showFlightEdit,setShowFlightEdit]=useState(false);
   const[savingFlight,setSavingFlight]=useState(false);
+  const[expandedTile,setExpandedTile]=useState(null);
   const day=trip.itinerary?.[activeDay];
 
   const fetchDayImg=async(idx)=>{
@@ -1327,7 +1339,7 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
 
   const saveFlightDetails=async()=>{
     setSavingFlight(true);
-    const updated={...trip,flightNumber,arrivalTime};
+    const updated={...trip,flightNumber,arrivalTime,departureTime};
     try{
       const{data:saved}=await supabase.from("trips").select("id").eq("destination",trip.destination).order("created_at",{ascending:false}).limit(1);
       if(saved?.[0]?.id)await supabase.from("trips").update({trip_data:updated}).eq("id",saved[0].id);
@@ -1362,37 +1374,62 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
 
       <div style={{maxWidth:640,margin:"0 auto",padding:"1.25rem 1.5rem"}}>
 
-        {/* Booking summary if booked */}
-        {trip.isBooked&&(
-          <div style={{background:C.white,borderRadius:16,border:`1px solid ${C.border}`,padding:"1.1rem 1.25rem",marginBottom:"1rem",boxShadow:"0 2px 12px rgba(28,20,16,0.05)"}}>
-            <p style={{fontSize:"0.65rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.14em",margin:"0 0 0.75rem"}}>Your bookings</p>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:"0.5rem"}}>
-              <span>✅</span><span style={{fontSize:"0.85rem",color:C.espresso,fontWeight:500}}>Flights booked</span>
-              {trip.departDate&&<span style={{fontSize:"0.75rem",color:C.muted,fontWeight:300}}>{trip.departDate} → {trip.returnDate}</span>}
+        {/* Booking status chips */}
+        <div style={{display:"flex",gap:"0.45rem",flexWrap:"wrap",marginBottom:"1rem"}}>
+          {[
+            {label:"Flights",done:!!(trip.isBooked||trip.departDate),icon:"✈"},
+            {label:"Hotel",done:!!trip.isBooked,icon:"🏨"},
+            {label:"Transfers",done:!!trip.transfersBooked,icon:"🚗"},
+            {label:"Activities",done:!!trip.activitiesBooked,icon:"🎭"},
+          ].map(({label,done,icon})=>(
+            <div key={label} style={{display:"flex",alignItems:"center",gap:5,padding:"0.35rem 0.85rem",borderRadius:20,background:done?"#e8f5e9":"rgba(28,20,16,0.05)",border:`1.5px solid ${done?"#a5d6a7":C.border}`}}>
+              <span style={{fontSize:"0.78rem"}}>{icon}</span>
+              <span style={{fontSize:"0.72rem",fontWeight:600,color:done?"#2e7d32":C.muted}}>{label}{done?" ✓":""}</span>
             </div>
-            {trip.flightNumber&&<div style={{fontSize:"0.78rem",color:C.muted,marginLeft:28,marginBottom:"0.5rem",fontWeight:300}}>Flight: {trip.flightNumber}{trip.arrivalTime&&` · Arrives ${trip.arrivalTime}`}</div>}
-            <button onClick={()=>setShowFlightEdit(s=>!s)} style={{fontSize:"0.75rem",color:C.terracotta,background:"transparent",border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500,padding:0,marginLeft:28}}>
-              {trip.flightNumber?"Edit flight details":"+ Add flight number & arrival time"}
-            </button>
-            {showFlightEdit&&(
-              <div style={{marginTop:"0.75rem",marginLeft:28,display:"flex",flexDirection:"column",gap:"0.5rem"}}>
-                <input value={flightNumber} onChange={e=>setFlightNumber(e.target.value)} placeholder="Flight number e.g. EZY1234"
-                  style={{padding:"0.6rem 0.85rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:8,fontSize:"0.85rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
-                <input value={arrivalTime} onChange={e=>setArrivalTime(e.target.value)} placeholder="Arrival time e.g. 14:30"
-                  style={{padding:"0.6rem 0.85rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:8,fontSize:"0.85rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
-                <button onClick={saveFlightDetails} disabled={savingFlight}
-                  style={{padding:"0.6rem 1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:8,fontSize:"0.82rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",alignSelf:"flex-start"}}>
-                  {savingFlight?"Saving…":"Save"}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+          ))}
+        </div>
 
         {/* Book trip CTA if not booked */}
         {!trip.isBooked&&onBook&&(
           <button onClick={onBook} style={{width:"100%",padding:"1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"1rem"}}>Let's Book This Trip →</button>
         )}
+
+        {/* Flight details card */}
+        <div style={{background:C.white,borderRadius:16,border:`1px solid ${C.border}`,padding:"1.1rem 1.25rem",marginBottom:"1rem",boxShadow:"0 2px 12px rgba(28,20,16,0.05)"}}>
+          <p style={{fontSize:"0.65rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.14em",margin:"0 0 0.75rem"}}>✈ Flight details</p>
+          {(trip.departureTime||trip.arrivalTime||trip.flightNumber)?(
+            <div style={{display:"flex",flexDirection:"column",gap:"0.45rem"}}>
+              {trip.flightNumber&&<div style={{fontSize:"0.85rem",color:C.ink,fontWeight:500}}>Flight {trip.flightNumber}</div>}
+              <div style={{display:"flex",gap:"1.5rem",flexWrap:"wrap"}}>
+                {trip.departureTime&&<div><div style={{fontSize:"0.6rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Departs</div><div style={{fontSize:"1rem",fontWeight:600,fontFamily:"'Cormorant Garamond',serif",color:C.espresso}}>{trip.departureTime}</div></div>}
+                {trip.arrivalTime&&<div><div style={{fontSize:"0.6rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Arrives</div><div style={{fontSize:"1rem",fontWeight:600,fontFamily:"'Cormorant Garamond',serif",color:C.espresso}}>{trip.arrivalTime}</div></div>}
+                {trip.arrivalTime&&<div><div style={{fontSize:"0.6rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Transfer</div><div style={{fontSize:"0.82rem",fontWeight:400,color:C.ink}}>~45–60 min</div></div>}
+              </div>
+              <button onClick={()=>setShowFlightEdit(s=>!s)} style={{fontSize:"0.75rem",color:C.terracotta,background:"transparent",border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:500,padding:0,alignSelf:"flex-start"}}>Edit details</button>
+            </div>
+          ):(
+            <div>
+              <p style={{margin:"0 0 0.65rem",fontSize:"0.85rem",color:C.muted,lineHeight:1.55,fontWeight:300}}>Add your flight times and Zirvoy will optimise your Day 1 itinerary around your schedule.</p>
+              <button onClick={()=>setShowFlightEdit(true)} style={{fontSize:"0.8rem",fontWeight:600,color:C.terracotta,background:"transparent",border:`1.5px solid ${C.terracotta}`,borderRadius:8,padding:"0.45rem 1rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>+ Add flight details</button>
+            </div>
+          )}
+          {showFlightEdit&&(
+            <div style={{marginTop:"0.85rem",display:"flex",flexDirection:"column",gap:"0.5rem"}}>
+              <input value={flightNumber} onChange={e=>setFlightNumber(e.target.value)} placeholder="Flight number e.g. EZY1234"
+                style={{padding:"0.6rem 0.85rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:8,fontSize:"0.85rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
+              <div style={{display:"flex",gap:"0.5rem"}}>
+                <input value={departureTime} onChange={e=>setDepartureTime(e.target.value)} placeholder="Departs e.g. 07:15"
+                  style={{flex:1,padding:"0.6rem 0.85rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:8,fontSize:"0.85rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
+                <input value={arrivalTime} onChange={e=>setArrivalTime(e.target.value)} placeholder="Arrives e.g. 11:45"
+                  style={{flex:1,padding:"0.6rem 0.85rem",background:C.sandLight,border:`1.5px solid ${C.border}`,borderRadius:8,fontSize:"0.85rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif"}}/>
+              </div>
+              <button onClick={saveFlightDetails} disabled={savingFlight}
+                style={{padding:"0.6rem 1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:8,fontSize:"0.82rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",alignSelf:"flex-start"}}>
+                {savingFlight?"Saving…":"Save"}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Day-by-day itinerary */}
         {trip.itinerary?.length>0&&(
@@ -1440,33 +1477,52 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
           <ItineraryBuilder trip={trip} onItineraryChange={handleItineraryChange}/>
         </div>
 
-        {/* Action tiles */}
+        {/* Also worth sorting — expandable tiles */}
         <p style={{fontSize:"0.65rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.14em",margin:"0 0 0.65rem"}}>Also worth sorting</p>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.65rem",marginBottom:"1rem"}}>
-          <a href={buildTransfersUrl()} target="_blank" rel="noopener noreferrer"
-            style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:16,padding:"1rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"left",textDecoration:"none",display:"block"}}>
-            <div style={{fontSize:"1.4rem",marginBottom:"0.35rem"}}>🚗</div>
-            <div style={{fontSize:"0.85rem",fontWeight:600,color:C.espresso}}>Transfers</div>
-            <div style={{fontSize:"0.72rem",color:C.muted,marginTop:2,fontWeight:300}}>Airport to hotel</div>
-          </a>
-          <a href={buildGYGUrl()} target="_blank" rel="noopener noreferrer"
-            style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:16,padding:"1rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"left",textDecoration:"none",display:"block"}}>
-            <div style={{fontSize:"1.4rem",marginBottom:"0.35rem"}}>🎭</div>
-            <div style={{fontSize:"0.85rem",fontWeight:600,color:C.espresso}}>Activities</div>
-            <div style={{fontSize:"0.72rem",color:C.muted,marginTop:2,fontWeight:300}}>Tours & experiences</div>
-          </a>
-          <a href={buildRestaurantsUrl()} target="_blank" rel="noopener noreferrer"
-            style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:16,padding:"1rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"left",textDecoration:"none",display:"block"}}>
-            <div style={{fontSize:"1.4rem",marginBottom:"0.35rem"}}>🍽</div>
-            <div style={{fontSize:"0.85rem",fontWeight:600,color:C.espresso}}>Restaurants</div>
-            <div style={{fontSize:"0.72rem",color:C.muted,marginTop:2,fontWeight:300}}>Where to eat</div>
-          </a>
-          <div onClick={onBook||undefined}
-            style={{background:trip.isBooked?C.parchment:C.espresso,border:`1.5px solid ${trip.isBooked?C.border:C.espresso}`,borderRadius:16,padding:"1rem",cursor:trip.isBooked?"default":"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"left"}}>
-            <div style={{fontSize:"1.4rem",marginBottom:"0.35rem"}}>{trip.isBooked?"✅":"✈"}</div>
-            <div style={{fontSize:"0.85rem",fontWeight:600,color:trip.isBooked?C.muted:C.sand}}>{trip.isBooked?"Flights booked":"Book flights"}</div>
-            <div style={{fontSize:"0.72rem",color:trip.isBooked?C.muted:"rgba(242,232,217,0.6)",marginTop:2,fontWeight:300}}>{trip.isBooked?"Hotel sorted":"& hotel"}</div>
-          </div>
+        <div style={{display:"flex",flexDirection:"column",gap:"0.65rem",marginBottom:"1rem"}}>
+          {[
+            {
+              id:"transfers",icon:"🚗",title:"Transfers",sub:"Airport to hotel",
+              desc:`Pre-booking your airport transfer means no hassle when you land in ${trip.destination}. Welcome Pickups offers fixed-price transfers with meet-and-greet.`,
+              cta:"Browse transfers",url:buildTransfersUrl()
+            },
+            {
+              id:"activities",icon:"🎭",title:"Activities",sub:"Tours & experiences",
+              desc:`From day trips to skip-the-line tickets, GetYourGuide has thousands of things to do in ${trip.destination}. Book in advance for popular experiences.`,
+              cta:"Explore activities",url:buildGYGUrl()
+            },
+            {
+              id:"restaurants",icon:"🍽",title:"Restaurants",sub:"Where to eat",
+              desc:`Find the best restaurants in ${trip.destination} on TripAdvisor — filter by cuisine, price, and neighbourhoods. Great for planning where to eat each evening.`,
+              cta:"Find restaurants",url:buildRestaurantsUrl()
+            },
+          ].map(tile=>{
+            const open=expandedTile===tile.id;
+            return(
+              <div key={tile.id} style={{background:C.white,border:`1.5px solid ${open?C.terracotta:C.border}`,borderRadius:16,overflow:"hidden",transition:"border-color 0.2s"}}>
+                <button onClick={()=>setExpandedTile(open?null:tile.id)}
+                  style={{width:"100%",padding:"0.9rem 1rem",background:"transparent",border:"none",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:"1.3rem"}}>{tile.icon}</span>
+                    <div style={{textAlign:"left"}}>
+                      <div style={{fontSize:"0.88rem",fontWeight:600,color:C.espresso}}>{tile.title}</div>
+                      <div style={{fontSize:"0.7rem",color:C.muted,marginTop:1,fontWeight:300}}>{tile.sub}</div>
+                    </div>
+                  </div>
+                  <span style={{fontSize:"0.75rem",color:C.muted,transform:open?"rotate(180deg)":"none",transition:"transform 0.2s",display:"inline-block"}}>▼</span>
+                </button>
+                {open&&(
+                  <div style={{padding:"0 1rem 1rem"}}>
+                    <p style={{margin:"0 0 0.85rem",fontSize:"0.83rem",color:C.ink,lineHeight:1.65,fontWeight:300}}>{tile.desc}</p>
+                    <a href={tile.url} target="_blank" rel="noopener noreferrer"
+                      style={{display:"inline-block",padding:"0.55rem 1.1rem",background:C.terracotta,color:C.white,borderRadius:8,fontSize:"0.8rem",fontWeight:600,textDecoration:"none",fontFamily:"'DM Sans',sans-serif"}}>
+                      {tile.cta} ↗
+                    </a>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
