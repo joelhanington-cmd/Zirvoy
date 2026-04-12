@@ -562,7 +562,7 @@ function BookingScreen({trip,onBack,onDone,onSummary}){
             <div style={{fontSize:"0.72rem",color:C.muted,marginTop:3,fontWeight:300}}>Tours & experiences</div>
           </a>
           {/* Restaurants */}
-          <a href={`https://www.tripadvisor.co.uk/Restaurants-${encodeURIComponent(trip.destination)}`} target="_blank" rel="noopener noreferrer"
+          <a href={`https://www.tripadvisor.co.uk/Search?q=${encodeURIComponent(trip.destination+"+restaurants")}`} target="_blank" rel="noopener noreferrer"
             style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:16,padding:"1.1rem 1rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"left",textDecoration:"none",display:"block",transition:"all 0.2s"}}>
             <div style={{fontSize:"1.5rem",marginBottom:"0.4rem"}}>🍽</div>
             <div style={{fontSize:"0.85rem",fontWeight:600,color:C.espresso,lineHeight:1.3}}>Browse restaurants?</div>
@@ -1451,7 +1451,7 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
 
   const buildTransfersUrl=()=>"https://www.welcomepickups.com/";
   const buildGYGUrl=()=>`https://www.getyourguide.com/s/?q=${encodeURIComponent(trip.destination)}&currency=GBP`;
-  const buildRestaurantsUrl=()=>`https://www.tripadvisor.co.uk/Search?searchNearby=false&searchSession=e&geo=1&q=${encodeURIComponent(trip.destination+" restaurants")}`;
+  const buildRestaurantsUrl=()=>`https://www.tripadvisor.co.uk/Search?q=${encodeURIComponent(trip.destination+"+restaurants")}`;
 
   return(
     <div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif",paddingBottom:100}}>
@@ -1778,7 +1778,7 @@ export default function Home(){
 
   const generate=async(request)=>{
     setLoading(true);setError(null);setScreen("results");setShowRefine(false);
-    setTripSaved(false);setShowStory(false);setShowBooking(false);setActiveTab("home");
+    setTripSaved(false);setSavedTripId(null);setShowStory(false);setShowBooking(false);setActiveTab("home");
     try{
       const res=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({request})});
       const data=await res.json();
@@ -1798,9 +1798,9 @@ export default function Home(){
   };
   const handleGenerate=(req)=>{setOriginalRequest(req);generate(req);};
   const handleRefine=(extra)=>generate(`${originalRequest}. Additional preferences: ${extra}`);
-  const handleNewTrip=()=>{setTrip(null);setOriginalRequest("");setError(null);setTripSaved(false);setShowStory(false);setShowBooking(false);setShowSummary(false);setScreen("home");setActiveTab("home");};
+  const handleNewTrip=()=>{setTrip(null);setOriginalRequest("");setError(null);setTripSaved(false);setSavedTripId(null);setShowStory(false);setShowBooking(false);setShowSummary(false);setScreen("home");setActiveTab("home");};
   const handleTripClick=(t)=>{setTrip(t.trip_data);setTripSaved(true);setShowStory(false);setShowBooking(false);setShowSummary(false);setScreen("results");setActiveTab("home");};
-  const handleSummaryClick=(t)=>{setTrip(t.trip_data);setTripSaved(true);setShowStory(false);setShowBooking(false);setShowSummary(true);setActiveTab("home");};
+  const handleSummaryClick=(t)=>{setTrip(t.trip_data);setTripSaved(true);setShowStory(false);setShowBooking(false);setShowSummary(true);};
   const handleOpenSummary=()=>{setShowSummary(true);setShowBooking(false);};
   const handleTripUpdate=(updated)=>{setTrip(updated);};
   const handleLetsBook=()=>{
