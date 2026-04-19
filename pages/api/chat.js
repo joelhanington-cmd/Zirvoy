@@ -51,12 +51,19 @@ action rules:
 
     // Parse the JSON response
     const clean = raw.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(clean);
-
-    res.json({ reply: parsed.reply, action: parsed.action || null });
+    let reply, action;
+    try {
+      const parsed = JSON.parse(clean);
+      reply = parsed.reply;
+      action = parsed.action || null;
+    } catch {
+      // AI didn't return valid JSON — use raw text as reply rather than erroring
+      reply = clean.replace(/^[{"\s]+|[}"\s]+$/g, "").trim() || "I couldn't get a response right now.";
+      action = null;
+    }
+    res.json({ reply, action });
   } catch (e) {
     console.error("Chat error:", e);
-    // Fallback: return raw text with no action if JSON parse fails
     res.status(500).json({ error: "Could not get a response right now" });
   }
 }

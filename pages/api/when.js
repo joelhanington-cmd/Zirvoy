@@ -39,7 +39,13 @@ Respond ONLY with valid JSON, no markdown.`,
     const data = await response.json();
     const raw = data.choices?.[0]?.message?.content || "{}";
     const clean = raw.replace(/```json|```/g, "").trim();
-    const result = JSON.parse(clean);
+    let result;
+    try {
+      result = JSON.parse(clean);
+    } catch (parseErr) {
+      console.error("When JSON parse error:", parseErr.message);
+      return res.status(500).json({ error: "Could not load travel tips" });
+    }
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: "Could not load travel tips" });

@@ -159,7 +159,24 @@ Rules:
     if (!text) return res.status(500).json({ error: "Empty response from AI" });
 
     const clean = text.replace(/```json|```/g, "").trim();
-    const trip = JSON.parse(clean);
+    let trip;
+    try {
+      trip = JSON.parse(clean);
+    } catch (parseErr) {
+      console.error("Plan JSON parse error:", parseErr.message, "| Raw:", clean.slice(0, 300));
+      return res.status(500).json({ error: "AI returned an unexpected response. Please try again." });
+    }
+
+    if (!trip.destination || !Array.isArray(trip.itinerary) || trip.itinerary.length === 0) {
+      return res.status(500).json({ error: "AI returned an incomplete trip plan. Please try again." });
+    }
+
+    // Silently fix budget math if AI got it wrong
+    const breakdownSum = Object.values(trip.breakdown || {}).reduce((a, b) => a + Number(b), 0);
+    if (breakdownSum > 0 && Math.abs(breakdownSum - trip.budgetTotal) > 50) {
+      trip.budgetTotal = breakdownSum;
+      trip.budgetPerPerson = Math.round(breakdownSum / (trip.travellers || 1));
+    }
 
     // Fetch hero photo from Pexels
     if (pexelsKey) {

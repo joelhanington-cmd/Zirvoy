@@ -77,7 +77,14 @@ Respond ONLY with valid JSON — no markdown:
     const data = await aiResponse.json();
     const raw = data.choices?.[0]?.message?.content || "{}";
     const clean = raw.replace(/```json|```/g, "").trim();
-    const result = JSON.parse(clean);
+    let result;
+    try {
+      result = JSON.parse(clean);
+      if (!result.hotels || !Array.isArray(result.hotels)) throw new Error("No hotels array");
+    } catch (parseErr) {
+      console.error("Hotels JSON parse error:", parseErr.message);
+      return res.status(500).json({ error: "Could not load hotel recommendations" });
+    }
 
     // Fetch a photo for each hotel from Pexels
     if (result.hotels && process.env.PEXELS_API_KEY) {

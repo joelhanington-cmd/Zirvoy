@@ -38,7 +38,14 @@ Return ONLY the updated itinerary as a valid JSON array with the same structure.
     const data = await response.json();
     const raw = data.choices?.[0]?.message?.content || "[]";
     const clean = raw.replace(/```json|```/g, "").trim();
-    const itinerary = JSON.parse(clean);
+    let itinerary;
+    try {
+      itinerary = JSON.parse(clean);
+      if (!Array.isArray(itinerary)) throw new Error("Not an array");
+    } catch (parseErr) {
+      console.error("Refine JSON parse error:", parseErr.message);
+      return res.status(500).json({ error: "Could not parse updated itinerary" });
+    }
     res.json({ itinerary });
   } catch (e) {
     console.error("Refine error:", e);

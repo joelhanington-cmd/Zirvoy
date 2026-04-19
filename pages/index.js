@@ -55,7 +55,7 @@ function BottomNav({active,onChange}){
   </div>);}
 
 // ── BOOKING FLOW ──────────────────────────────────────────────────────────────
-function BookingScreen({trip,onBack,onDone,onSummary}){
+function BookingScreen({trip,onBack,onDone,onSummary,homeAirport}){
   const[step,setStep]=useState(0); // 0=flights, 1=hotels, 2=celebration
   const steps=["Flights","Hotels"];
 
@@ -123,7 +123,7 @@ function BookingScreen({trip,onBack,onDone,onSummary}){
     }catch(e){console.error(e);}
     finally{setRefineLoading(false);}
   };
-  const buildTransfersUrl=()=>"https://www.welcomepickups.com/";
+  const buildTransfersUrl=()=>`https://www.welcomepickups.com/${encodeURIComponent(trip.destination.toLowerCase().replace(/\s+/g,'-'))}/`;
 
   const suggestDates=()=>{
     if(!whenInsight?.bestMonths)return;
@@ -142,31 +142,113 @@ function BookingScreen({trip,onBack,onDone,onSummary}){
     setReturnDate(ret.toISOString().split('T')[0]);
   };
 
+  // Extract IATA code from airport string e.g. "Manchester (MAN)" → "man"
+  const getOriginIATA=(airportStr)=>{
+    const match=(airportStr||'').match(/\(([A-Z]{3})\)/);
+    return match?match[1].toLowerCase():'lhr';
+  };
+
   // Build Skyscanner deep link
   const buildSkyscannerUrl=()=>{
     const IATA={
-      'santorini':'jtr','athens':'ath','mykonos':'jmk','crete':'her','rhodes':'rho','corfu':'cfu','zakynthos':'zth',
-      'rome':'rom','milan':'mil','venice':'vce','florence':'flo','naples':'nap','sicily':'cta','sardinia':'cag',
-      'amalfi':'nap','positano':'nap',
-      'barcelona':'bcn','madrid':'mad','seville':'svq','malaga':'agp','ibiza':'ibz','mallorca':'pmi','valencia':'vlc',
-      'lisbon':'lis','porto':'opo','algarve':'fao',
-      'paris':'par','nice':'nce','marseille':'mrs','lyon':'lys',
-      'amsterdam':'ams','brussels':'bru','copenhagen':'cph','stockholm':'sto','oslo':'osl','helsinki':'hel',
-      'prague':'prg','vienna':'vie','budapest':'bud','krakow':'krk','warsaw':'waw',
-      'dubrovnik':'dbv','split':'spu','zagreb':'zag','montenegro':'tgd',
-      'reykjavik':'rek',
-      'bali':'dps','maldives':'mle','phuket':'hkt','koh samui':'usp','krabi':'kbv',
-      'bangkok':'bkk','singapore':'sin','hong kong':'hkg','tokyo':'tyo','osaka':'kix','kyoto':'kix',
-      'dubai':'dxb','abu dhabi':'auh','doha':'doh','marrakech':'rak',
-      'cape town':'cpt','zanzibar':'znz','nairobi':'nbo',
-      'new york':'nyc','los angeles':'lax','miami':'mia','cancun':'cun',
-      'sydney':'syd','melbourne':'mel','bali':'dps',
+      // Greece
+      'santorini':'jtr','athens':'ath','mykonos':'jmk','crete':'her','heraklion':'her','rhodes':'rho','corfu':'cfu',
+      'zakynthos':'zth','zante':'zth','thessaloniki':'skg','kos':'kgs','lesbos':'mjt','chania':'chq',
+      // Italy
+      'rome':'fco','milan':'mxp','venice':'vce','florence':'flr','naples':'nap','sicily':'cta','catania':'cta',
+      'sardinia':'cag','cagliari':'cag','palermo':'pmo','bologna':'blq','turin':'trn','pisa':'psa','verona':'vrn',
+      'bari':'bri','brindisi':'bds','amalfi':'nap','positano':'nap','capri':'nap','cinque terre':'fco',
+      // Spain
+      'barcelona':'bcn','madrid':'mad','seville':'svq','malaga':'agp','ibiza':'ibz','mallorca':'pmi',
+      'menorca':'mah','valencia':'vlc','alicante':'alc','bilbao':'bio','san sebastian':'eas',
+      'tenerife':'tfs','gran canaria':'lpa','lanzarote':'ace','fuerteventura':'fue','la palma':'spc',
+      'granada':'grx','cordoba':'ods','toledo':'mad',
+      // Portugal
+      'lisbon':'lis','porto':'opo','algarve':'fao','faro':'fao','madeira':'fnc','funchal':'fnc',
+      'azores':'pdl','ponta delgada':'pdl',
+      // France
+      'paris':'cdg','nice':'nce','marseille':'mrs','lyon':'lys','bordeaux':'bod','toulouse':'tls',
+      'strasbourg':'sxb','nantes':'nte','biarritz':'biq','corsica':'ajaccio',
+      // Benelux & Nordics
+      'amsterdam':'ams','brussels':'bru','copenhagen':'cph','stockholm':'arn','oslo':'osl','helsinki':'hel',
+      'reykjavik':'kef','iceland':'kef','gothenburg':'got','bergen':'bgo','tromso':'tos',
+      // Central Europe
+      'prague':'prg','vienna':'vie','budapest':'bud','krakow':'krk','warsaw':'waw','gdansk':'gdn',
+      'salzburg':'szg','innsbruck':'inn','bratislava':'bts','ljubljana':'lju',
+      // Eastern Europe & Balkans
+      'dubrovnik':'dbv','split':'spu','zagreb':'zag','zadar':'zad','hvar':'spu',
+      'montenegro':'tiv','tivat':'tiv','podgorica':'tgd',
+      'belgrade':'beg','sofia':'sof','bucharest':'otp','riga':'rix','tallinn':'tll','vilnius':'vno',
+      'tirana':'tia','sarajevo':'sjj','skopje':'skp','chisinau':'kiv',
+      // Turkey
+      'istanbul':'ist','antalya':'ayt','bodrum':'bjv','dalaman':'dlm','cappadocia':'asw','izmir':'adb',
+      'ankara':'esb','trabzon':'tzx',
+      // Middle East
+      'dubai':'dxb','abu dhabi':'auh','doha':'doh','muscat':'mct','kuwait':'kwi','bahrain':'bah',
+      'riyadh':'ruh','jeddah':'jed','amman':'amm','beirut':'bey','tel aviv':'tlv',
+      // North Africa
+      'marrakech':'rak','casablanca':'cmn','fez':'fes','agadir':'aga','tunis':'tun','cairo':'cai',
+      'luxor':'lxr','hurghada':'hrg','sharm el sheikh':'ssh','algiers':'alg',
+      // Sub-Saharan Africa
+      'cape town':'cpt','johannesburg':'jnb','durban':'dur','nairobi':'nbo','zanzibar':'znz',
+      'dar es salaam':'dar','kilimanjaro':'jro','kigali':'kgl','addis ababa':'add',
+      'accra':'acc','lagos':'los','dakar':'dkr','mauritius':'mru','seychelles':'sez',
+      'maldives':'mle','male':'mle',
+      // Southeast Asia
+      'bali':'dps','denpasar':'dps','lombok':'lop','jakarta':'cgk','yogyakarta':'jog',
+      'phuket':'hkt','bangkok':'bkk','chiang mai':'cnx','koh samui':'usm','krabi':'kbv',
+      'singapore':'sin','kuala lumpur':'kul','penang':'pen','langkawi':'lgk',
+      'kota kinabalu':'bki','borneo':'bki',
+      'ho chi minh':'sgn','saigon':'sgn','hanoi':'han','da nang':'dad',
+      'phnom penh':'pnh','siem reap':'rep','vientiane':'vte','yangon':'rgn',
+      'manila':'mnl','cebu':'ceb','palawan':'pps',
+      // East Asia
+      'hong kong':'hkg','tokyo':'hnd','osaka':'kix','kyoto':'kix','sapporo':'cts',
+      'fukuoka':'fuk','okinawa':'oka','hiroshima':'hij',
+      'seoul':'icn','busan':'pus','taipei':'tpe',
+      'beijing':'pek','shanghai':'pvg','shenzhen':'szx','chengdu':'ctu','xian':'xiy',
+      'guilin':'kwl','sanya':'syx','guangzhou':'can',
+      // South Asia
+      'delhi':'del','mumbai':'bom','bangalore':'blr','goa':'goi','chennai':'maa',
+      'kolkata':'ccu','hyderabad':'hyd','colombo':'cmb','maldives':'mle',
+      'kathmandu':'ktm','nepal':'ktm','dhaka':'dac','bhutan':'pbh',
+      // Central Asia & Caucasus
+      'tbilisi':'tbs','yerevan':'evn','baku':'gyd','tashkent':'tas','samarkand':'skd','almaty':'ala',
+      // Oceania
+      'sydney':'syd','melbourne':'mel','brisbane':'bne','perth':'per','adelaide':'adl','cairns':'cns',
+      'gold coast':'ool','auckland':'akl','queenstown':'zqn','wellington':'wlg','christchurch':'chc',
+      'fiji':'nan','bora bora':'bob','tahiti':'ppt','hawaii':'hnl','honolulu':'hnl',
+      // North America
+      'new york':'jfk','nyc':'jfk','los angeles':'lax','miami':'mia','san francisco':'sfo',
+      'las vegas':'las','chicago':'ord','boston':'bos','seattle':'sea','washington':'iad',
+      'atlanta':'atl','dallas':'dfw','houston':'iah','denver':'den','phoenix':'phx',
+      'san diego':'san','portland':'pdx','new orleans':'msy','nashville':'bna','austin':'aus',
+      'toronto':'yyz','vancouver':'yvr','montreal':'yul','calgary':'yyc',
+      // Mexico & Caribbean
+      'cancun':'cun','mexico city':'mex','los cabos':'sjd','cabo':'sjd','puerto vallarta':'pvr',
+      'oaxaca':'oax','tulum':'cun','playa del carmen':'cun',
+      'havana':'hav','cuba':'hav','jamaica':'mbj','montego bay':'mbj','kingston':'kin',
+      'barbados':'bgi','bridgetown':'bgi','trinidad':'pos',
+      'dominican republic':'puj','punta cana':'puj','santo domingo':'sdq',
+      'nassau':'nas','bahamas':'nas','aruba':'aua','curacao':'cur',
+      'st lucia':'uvf','antigua':'anu','grand cayman':'gcm',
+      // Central & South America
+      'panama':'pty','costa rica':'sjo','san jose':'sjo','guatemala':'gua','belize':'bze',
+      'bogota':'bog','medellin':'mde','cartagena':'ctg','colombia':'bog',
+      'lima':'lim','cusco':'cuz','machu picchu':'cuz','peru':'lim',
+      'quito':'uio','galapagos':'gps','ecuador':'uio',
+      'rio de janeiro':'gig','rio':'gig','sao paulo':'gru','salvador':'ssa','fortaleza':'for',
+      'iguazu':'igu','manaus':'mao','brazil':'gru',
+      'buenos aires':'eze','bariloche':'brc','mendoza':'mdz','argentina':'eze',
+      'santiago':'scl','chile':'scl','patagonia':'fal',
+      'montevideo':'mvd','uruguay':'mvd','lima':'lim',
     };
     const key=trip.destination.toLowerCase();
     const destCode=Object.entries(IATA).find(([k])=>key.includes(k))?.[1]||'anywhere';
+    const originCode=getOriginIATA(homeAirport||profile?.home_airport);
     const travellers=trip.travellers||2;
     const fmt2=(s)=>s.replace(/-/g,"");
-    return `https://www.skyscanner.net/transport/flights/lond/${destCode}/${fmt2(departDate)}/${fmt2(returnDate)}/?adults=${travellers}&cabinclass=economy&currency=GBP&locale=en-GB&market=UK`;
+    return `https://www.skyscanner.net/transport/flights/${originCode}/${destCode}/${fmt2(departDate)}/${fmt2(returnDate)}/?adults=${travellers}&cabinclass=economy&currency=GBP&locale=en-GB&market=UK`;
   };
 
   // Build Booking.com deep link
@@ -1365,7 +1447,7 @@ function ItineraryBuilder({trip,onItineraryChange}){
     car_hire:{label:"Search car hire →",emoji:"🚗",url:()=>`https://www.rentalcars.com/search?location=${encodeURIComponent(trip.destination)}`},
     activities:{label:"Browse activities →",emoji:"🎯",url:()=>`https://www.getyourguide.com/s/?q=${encodeURIComponent(trip.destination)}`},
     restaurants:{label:"Find restaurants →",emoji:"🍽",url:()=>`https://www.tripadvisor.co.uk/Search?q=${encodeURIComponent(trip.destination+" restaurants")}`},
-    flights:{label:"Search flights →",emoji:"✈",url:()=>`https://www.skyscanner.net/transport/flights/uk/${encodeURIComponent((trip.destination||"").toLowerCase().replace(/\s+/g,""))}/`},
+    flights:{label:"Search flights →",emoji:"✈",url:()=>`https://www.skyscanner.net/transport/flights-from/gb/?query=${encodeURIComponent(trip.destination)}`},
   };
   const send=async(text)=>{
     if(!text.trim()||loading)return;
@@ -1508,7 +1590,7 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
     finally{setSavingFlight(false);}
   };
 
-  const buildTransfersUrl=()=>"https://www.welcomepickups.com/";
+  const buildTransfersUrl=()=>`https://www.welcomepickups.com/${encodeURIComponent(trip.destination.toLowerCase().replace(/\s+/g,'-'))}/`;
   const buildGYGUrl=()=>`https://www.getyourguide.com/s/?q=${encodeURIComponent(trip.destination)}&currency=GBP`;
   const buildRestaurantsUrl=()=>`https://www.tripadvisor.co.uk/Search?q=${encodeURIComponent(trip.destination+"+restaurants")}`;
 
@@ -1909,7 +1991,7 @@ export default function Home(){
       )}
 
       {!loading&&screen==="results"&&trip&&showBooking&&(
-        <BookingScreen trip={trip} onBack={()=>setShowBooking(false)} onDone={()=>{setShowBooking(false);if(user)setActiveTab("trips");}} onSummary={()=>{setShowBooking(false);setShowSummary(true);}}/>
+        <BookingScreen trip={trip} homeAirport={profile?.home_airport} onBack={()=>setShowBooking(false)} onDone={()=>{setShowBooking(false);if(user)setActiveTab("trips");}} onSummary={()=>{setShowBooking(false);setShowSummary(true);}}/>
       )}
 
       {!loading&&trip&&showSummary&&!showBooking&&(

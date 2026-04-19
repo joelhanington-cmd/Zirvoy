@@ -36,9 +36,17 @@ export default function SharedTrip({trip}){
       <Head>
         <title>{trip.destination}, {trip.country} — planned with Zirvoy</title>
         <meta name="description" content={`${trip.duration} nights in ${trip.destination}. Est. £${fmt(trip.budgetTotal)}. ${trip.tagline}`}/>
+        <meta property="og:type" content="website"/>
         <meta property="og:title" content={`${trip.destination} — planned with Zirvoy`}/>
-        <meta property="og:description" content={trip.tagline}/>
+        <meta property="og:description" content={`${trip.duration} nights · ${trip.travellers} travellers · Est. £${fmt(trip.budgetTotal)}. ${trip.tagline}`}/>
         {trip.photo&&<meta property="og:image" content={trip.photo}/>}
+        {trip.photo&&<meta property="og:image:width" content="1200"/>}
+        {trip.photo&&<meta property="og:image:height" content="630"/>}
+        <meta property="og:locale" content="en_GB"/>
+        <meta name="twitter:card" content="summary_large_image"/>
+        <meta name="twitter:title" content={`${trip.destination} — planned with Zirvoy`}/>
+        <meta name="twitter:description" content={`${trip.duration} nights · Est. £${fmt(trip.budgetTotal)}. ${trip.tagline}`}/>
+        {trip.photo&&<meta name="twitter:image" content={trip.photo}/>}
         <meta name="viewport" content="width=device-width,initial-scale=1"/>
       </Head>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');*{-webkit-font-smoothing:antialiased;box-sizing:border-box;}body{margin:0;padding:0;background:#FAF6F0;}`}</style>
