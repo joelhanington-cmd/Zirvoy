@@ -11,6 +11,8 @@ const fmt=(n)=>Number(n).toLocaleString("en-GB");
 const FONT_STYLE=`
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
   @keyframes pulse{0%,100%{transform:scale(1);opacity:0.7}50%{transform:scale(1.1);opacity:1}}
+  @keyframes revealProgress{from{width:0%}to{width:100%}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
   *{-webkit-font-smoothing:antialiased;box-sizing:border-box;}
   body{margin:0;padding:0;background:#FAF6F0;}
   input::placeholder,textarea::placeholder{color:#8A7968;}
@@ -902,6 +904,65 @@ function LandingPage({onCreateAccount,onLogin,onDecide,onStartPlanning}){
 function SignUpScreen({onSuccess,onLogin}){const[step,setStep]=useState(1);const[loading,setLoading]=useState(false);const[error,setError]=useState(null);const[form,setForm]=useState({firstName:"",lastName:"",email:"",password:"",dateOfBirth:"",nationality:"",homeAirport:"",passportNumber:"",passportExpiry:""});const set=(k)=>(e)=>setForm(f=>({...f,[k]:e.target.value}));const setVal=(k)=>(v)=>setForm(f=>({...f,[k]:v}));const s1v=form.firstName&&form.lastName&&form.email&&form.password.length>=6;const s2v=form.homeAirport;const handleSignUp=async()=>{setLoading(true);setError(null);try{const{data,error:ae}=await supabase.auth.signUp({email:form.email,password:form.password});if(ae)throw ae;if(data.user){const{error:profErr}=await supabase.from("profiles").insert({id:data.user.id,first_name:form.firstName,last_name:form.lastName,email:form.email,home_airport:form.homeAirport,date_of_birth:form.dateOfBirth||null,nationality:form.nationality||null,passport_number:form.passportNumber||null,passport_expiry:form.passportExpiry||null});if(profErr)throw profErr;}onSuccess(data.user);}catch(e){setError(e.message);}finally{setLoading(false);}};const titles=["Create your account","About you","Speed up bookings"];const subs=["Start planning in seconds","Helps us personalise your trips","Optional — save time when booking"];return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif"}}><div style={{background:C.espresso,padding:"2rem 1.5rem 2.5rem",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/><div style={{position:"relative"}}><ZirvoyLogo light/><h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"2rem",fontWeight:600,color:C.sand,margin:"1.25rem 0 0.35rem",lineHeight:1.2}}>{titles[step-1]}</h2><p style={{fontSize:"0.85rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>{subs[step-1]}</p><div style={{display:"flex",gap:6,marginTop:"1.25rem"}}>{[1,2,3].map(i=><div key={i} style={{width:i===step?24:6,height:6,borderRadius:3,background:i<=step?C.terracotta:"rgba(242,232,217,0.2)",transition:"all 0.3s"}}/>)}</div></div></div><div style={{padding:"1.75rem 1.5rem",maxWidth:480,margin:"0 auto"}}>{error&&<div style={{background:"#fde8e8",border:"1px solid #e07070",borderRadius:10,padding:"0.75rem 1rem",marginBottom:"1rem",fontSize:"0.85rem",color:"#c0392b"}}>{error}</div>}{step===1&&<><Input label="First Name" value={form.firstName} onChange={set("firstName")} placeholder="John"/><Input label="Last Name" value={form.lastName} onChange={set("lastName")} placeholder="Smith"/><Input label="Email" type="email" value={form.email} onChange={set("email")} placeholder="john@example.com"/><Input label="Password" type="password" value={form.password} onChange={set("password")} placeholder="Min. 6 characters"/><Btn onClick={()=>{setError(null);setStep(2);}} disabled={!s1v}>Continue</Btn><p style={{textAlign:"center",fontSize:"0.85rem",color:C.muted,marginTop:"1.25rem"}}>Already have an account?{" "}<span onClick={onLogin} style={{color:C.terracotta,cursor:"pointer",fontWeight:500}}>Log in</span></p></>}{step===2&&<><AirportInput value={form.homeAirport} onChange={setVal("homeAirport")}/><Input label="Date of Birth" type="date" value={form.dateOfBirth} onChange={set("dateOfBirth")} optional/><NationalityInput value={form.nationality} onChange={setVal("nationality")}/><Btn onClick={()=>setStep(3)} disabled={!s2v}>Continue</Btn><Btn onClick={()=>setStep(1)} variant="secondary" style={{marginTop:"0.5rem"}}>Back</Btn></>}{step===3&&<><div style={{background:C.parchment,borderRadius:12,padding:"0.85rem 1rem",marginBottom:"1.25rem",fontSize:"0.82rem",color:C.muted,lineHeight:1.6}}>We store this securely so you never have to type it again when booking.</div><Input label="Passport Number" value={form.passportNumber} onChange={set("passportNumber")} placeholder="e.g. 123456789" optional/><Input label="Passport Expiry" type="date" value={form.passportExpiry} onChange={set("passportExpiry")} optional/><Btn onClick={handleSignUp} disabled={loading}>{loading?"Creating your account…":"Start Planning →"}</Btn><Btn onClick={()=>setStep(2)} variant="secondary" style={{marginTop:"0.5rem"}}>Back</Btn></>}</div></div>);}
 
 function LoginScreen({onSuccess,onCreateAccount}){const[form,setForm]=useState({email:"",password:""});const[loading,setLoading]=useState(false);const[error,setError]=useState(null);const set=(k)=>(e)=>setForm(f=>({...f,[k]:e.target.value}));const valid=form.email&&form.password;const handleLogin=async()=>{setLoading(true);setError(null);try{const{data,error:ae}=await supabase.auth.signInWithPassword({email:form.email,password:form.password});if(ae)throw ae;onSuccess(data.user);}catch(e){setError("Incorrect email or password — please try again.");}finally{setLoading(false);};};return(<div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif"}}><div style={{background:C.espresso,padding:"2rem 1.5rem 2.5rem",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",inset:0,backgroundImage:`radial-gradient(${C.bark} 1px,transparent 1px)`,backgroundSize:"22px 22px",opacity:0.6}}/><div style={{position:"relative"}}><ZirvoyLogo light/><h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"2rem",fontWeight:600,color:C.sand,margin:"1.25rem 0 0.35rem"}}>Welcome back</h2><p style={{fontSize:"0.85rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>Log in to access your trips</p></div></div><div style={{padding:"1.75rem 1.5rem",maxWidth:480,margin:"0 auto"}}>{error&&<div style={{background:"#fde8e8",border:"1px solid #e07070",borderRadius:10,padding:"0.75rem 1rem",marginBottom:"1rem",fontSize:"0.85rem",color:"#c0392b"}}>{error}</div>}<Input label="Email" type="email" value={form.email} onChange={set("email")} placeholder="john@example.com"/><Input label="Password" type="password" value={form.password} onChange={set("password")} placeholder="Your password"/><Btn onClick={handleLogin} disabled={!valid||loading}>{loading?"Logging in…":"Log In →"}</Btn><p style={{textAlign:"center",fontSize:"0.85rem",color:C.muted,marginTop:"1.25rem"}}>Don't have an account?{" "}<span onClick={onCreateAccount} style={{color:C.terracotta,cursor:"pointer",fontWeight:500}}>Create one</span></p></div></div>);}
+
+function TripRevealScreen({trip,onContinue}){
+  const[imgLoaded,setImgLoaded]=useState(false);
+  const[visible,setVisible]=useState(false);
+  const DURATION=3200;
+  useEffect(()=>{
+    const show=setTimeout(()=>setVisible(true),60);
+    const next=setTimeout(()=>onContinue(),DURATION);
+    return()=>{clearTimeout(show);clearTimeout(next);};
+  },[]);
+  return(
+    <div style={{position:"fixed",inset:0,background:C.espresso,zIndex:150,fontFamily:"'DM Sans',sans-serif",overflow:"hidden"}}>
+      {/* Hero image */}
+      {trip.photo&&<img src={trip.photo} alt={trip.destination} onLoad={()=>setImgLoaded(true)}
+        style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",
+          opacity:imgLoaded&&visible?1:0,transition:"opacity 1.4s ease",filter:"brightness(0.75)"}}/>}
+      {/* Dark gradient */}
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(28,20,16,0.05) 0%,rgba(28,20,16,0.5) 50%,rgba(28,20,16,0.97) 100%)"}}/>
+      {/* Progress bar */}
+      <div style={{position:"absolute",top:0,left:0,right:0,height:2.5,background:"rgba(255,255,255,0.08)"}}>
+        <div style={{height:"100%",background:C.terracotta,borderRadius:2,
+          animation:`revealProgress ${DURATION}ms linear forwards`}}/>
+      </div>
+      {/* Zirvoy logo */}
+      <div style={{position:"absolute",top:"1.5rem",left:"1.5rem",opacity:visible?1:0,transition:"opacity 0.6s ease 0.2s"}}>
+        <ZirvoyLogo light size="sm"/>
+      </div>
+      {/* Skip button */}
+      <button onClick={onContinue} style={{position:"absolute",top:"1.35rem",right:"1.5rem",
+        background:"rgba(28,20,16,0.45)",backdropFilter:"blur(8px)",border:"1px solid rgba(242,232,217,0.2)",
+        color:C.sand,padding:"0.35rem 0.9rem",borderRadius:20,fontSize:"0.75rem",fontWeight:500,
+        cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
+        opacity:visible?1:0,transition:"opacity 0.6s ease 0.4s"}}>
+        Skip →
+      </button>
+      {/* Content */}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"2rem 1.75rem 4.5rem",
+        animation:visible?"fadeUp 0.9s ease 0.35s both":"none"}}>
+        <p style={{fontSize:"0.62rem",fontWeight:600,color:C.terra2,letterSpacing:"0.22em",
+          textTransform:"uppercase",margin:"0 0 0.5rem"}}>{trip.country}</p>
+        <h1 style={{fontFamily:"'Cormorant Garamond',serif",
+          fontSize:"clamp(3rem,10vw,5rem)",fontWeight:600,color:C.sand,
+          margin:"0 0 0.75rem",lineHeight:0.95,letterSpacing:"-0.01em"}}>
+          {trip.destination}
+        </h1>
+        <p style={{fontSize:"clamp(0.9rem,3vw,1.05rem)",color:"rgba(242,232,217,0.65)",
+          margin:"0 0 2rem",lineHeight:1.6,fontWeight:300,maxWidth:380}}>
+          {trip.tagline}
+        </p>
+        <button onClick={onContinue}
+          style={{padding:"0.9rem 2rem",background:C.terracotta,color:C.white,border:"none",
+            borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:"pointer",
+            fontFamily:"'DM Sans',sans-serif"}}>
+          View your trip →
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function LoadingScreen({input}){
   const[prog,setProg]=useState(0);
@@ -1873,6 +1934,7 @@ export default function Home(){
   const[showSummary,setShowSummary]=useState(false);
   const[showAuthPrompt,setShowAuthPrompt]=useState(false);
   const[authPromptAction,setAuthPromptAction]=useState(null);
+  const[showReveal,setShowReveal]=useState(false);
 
   useEffect(()=>{fetch("/api/destinations").then(r=>r.json()).then(d=>{if(d.photos?.length)setDestImages(d.photos.map(p=>p.url));}).catch(()=>{});},[]);
 
@@ -1925,6 +1987,7 @@ export default function Home(){
       const data=await res.json();
       if(!res.ok||!data.trip)throw new Error(data.error||"Something went wrong");
       setTrip(data.trip);
+      setShowReveal(true);
       // Auto-save trip
       if(user){const saved=await saveTrip(user.id,data.trip);if(saved)setTripSaved(true);}
     }catch(e){setError(e.message);setScreen("home");}
@@ -1938,7 +2001,7 @@ export default function Home(){
   };
   const handleGenerate=(req)=>{setOriginalRequest(req);generate(req);};
   const handleRefine=(extra)=>generate(`${originalRequest}. Additional preferences: ${extra}`);
-  const handleNewTrip=()=>{setTrip(null);setOriginalRequest("");setError(null);setTripSaved(false);setSavedTripId(null);setShowStory(false);setShowBooking(false);setShowSummary(false);setScreen("home");setActiveTab("home");};
+  const handleNewTrip=()=>{setTrip(null);setOriginalRequest("");setError(null);setTripSaved(false);setSavedTripId(null);setShowStory(false);setShowBooking(false);setShowSummary(false);setShowReveal(false);setScreen("home");setActiveTab("home");};
   const handleTripClick=(t)=>{setTrip(t.trip_data);setTripSaved(true);setShowStory(false);setShowBooking(false);setShowSummary(false);setScreen("results");setActiveTab("home");};
   const handleSummaryClick=(t)=>{setTrip(t.trip_data);setTripSaved(true);setShowStory(false);setShowBooking(false);setShowSummary(true);};
   const handleOpenSummary=()=>{setShowSummary(true);setShowBooking(false);};
@@ -1982,6 +2045,9 @@ export default function Home(){
 
       {/* Full loading screen only on fresh generation (no existing trip in state) */}
       {loading&&!trip&&<LoadingScreen input={originalRequest}/>}
+
+      {/* Trip reveal — smooth landing after generation */}
+      {!loading&&trip&&showReveal&&<TripRevealScreen trip={trip} onContinue={()=>setShowReveal(false)}/>}
 
       {/* Overlay for refine/update (trip already exists) */}
       {loading&&trip&&<div style={{position:"fixed",inset:0,background:"rgba(28,20,16,0.55)",zIndex:150,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}><div style={{background:C.espresso,borderRadius:20,padding:"2rem 2.5rem",textAlign:"center",maxWidth:280}}><div style={{animation:"pulse 2s ease-in-out infinite",marginBottom:"1rem"}}><ZirvoyMark size={40} color={C.terracotta}/></div><p style={{color:C.sand,fontFamily:"'Cormorant Garamond',serif",fontSize:"1.2rem",margin:"0 0 0.35rem"}}>Updating your trip…</p><p style={{color:"rgba(242,232,217,0.5)",fontSize:"0.78rem",margin:0,fontWeight:300}}>Applying your changes</p></div></div>}
