@@ -1939,6 +1939,32 @@ export default function Home(){
   const[authPromptAction,setAuthPromptAction]=useState(null);
   const[showReveal,setShowReveal]=useState(false);
 
+  // Restore session state after refresh
+  useEffect(()=>{
+    try{
+      const saved=sessionStorage.getItem("zirvoy_session");
+      if(saved){
+        const s=JSON.parse(saved);
+        if(s.trip){setTrip(s.trip);setScreen("results");}
+        if(s.tripSaved)setTripSaved(s.tripSaved);
+        if(s.savedTripId)setSavedTripId(s.savedTripId);
+        if(s.originalRequest)setOriginalRequest(s.originalRequest);
+        if(s.showSummary)setShowSummary(s.showSummary);
+      }
+    }catch(e){}
+  },[]);
+
+  // Persist session state on change
+  useEffect(()=>{
+    try{
+      if(trip){
+        sessionStorage.setItem("zirvoy_session",JSON.stringify({trip,tripSaved,savedTripId,originalRequest,showSummary}));
+      }else{
+        sessionStorage.removeItem("zirvoy_session");
+      }
+    }catch(e){}
+  },[trip,tripSaved,savedTripId,originalRequest,showSummary]);
+
   useEffect(()=>{fetch("/api/destinations").then(r=>r.json()).then(d=>{if(d.photos?.length)setDestImages(d.photos.map(p=>p.url));}).catch(()=>{});},[]);
 
   useEffect(()=>{
@@ -2004,7 +2030,7 @@ export default function Home(){
   };
   const handleGenerate=(req)=>{setOriginalRequest(req);generate(req);};
   const handleRefine=(extra)=>generate(`${originalRequest}. Additional preferences: ${extra}`);
-  const handleNewTrip=()=>{setTrip(null);setOriginalRequest("");setError(null);setTripSaved(false);setSavedTripId(null);setShowStory(false);setShowBooking(false);setShowSummary(false);setShowReveal(false);setScreen("home");setActiveTab("home");};
+  const handleNewTrip=()=>{setTrip(null);setOriginalRequest("");setError(null);setTripSaved(false);setSavedTripId(null);setShowStory(false);setShowBooking(false);setShowSummary(false);setShowReveal(false);setScreen("home");setActiveTab("home");try{sessionStorage.removeItem("zirvoy_session");}catch(e){}};
   const handleTripClick=(t)=>{setTrip(t.trip_data);setTripSaved(true);setShowStory(false);setShowBooking(false);setShowSummary(false);setScreen("results");setActiveTab("home");};
   const handleSummaryClick=(t)=>{setTrip(t.trip_data);setTripSaved(true);setShowStory(false);setShowBooking(false);setShowSummary(true);};
   const handleOpenSummary=()=>{setShowSummary(true);setShowBooking(false);};
