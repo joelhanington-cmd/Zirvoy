@@ -957,7 +957,7 @@ function TripRevealScreen({trip,onContinue}){
           style={{padding:"0.9rem 2rem",background:C.terracotta,color:C.white,border:"none",
             borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:"pointer",
             fontFamily:"'DM Sans',sans-serif"}}>
-          View your trip →
+          View my trip plan →
         </button>
       </div>
     </div>
@@ -1395,6 +1395,9 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
 
         {/* Primary CTA */}
         <button onClick={onLetsBook} style={{width:"100%",padding:"1.05rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.5rem"}}>Let's Book This Trip →</button>
+
+        {/* Plan in detail */}
+        <button onClick={onPlanTrip} style={{width:"100%",padding:"0.9rem",background:C.white,color:C.espresso,border:`1.5px solid ${C.espresso}`,borderRadius:12,fontSize:"0.9rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.5rem"}}>View full itinerary & plan →</button>
 
         {/* Secondary row: save + share */}
         <div style={{display:"flex",gap:"0.5rem",marginBottom:"0.65rem"}}>
@@ -2047,7 +2050,7 @@ export default function Home(){
       {loading&&!trip&&<LoadingScreen input={originalRequest}/>}
 
       {/* Trip reveal — smooth landing after generation */}
-      {!loading&&trip&&showReveal&&<TripRevealScreen trip={trip} onContinue={()=>setShowReveal(false)}/>}
+      {!loading&&trip&&showReveal&&<TripRevealScreen trip={trip} onContinue={()=>{setShowReveal(false);setShowSummary(true);}}/>}
 
       {/* Overlay for refine/update (trip already exists) */}
       {loading&&trip&&<div style={{position:"fixed",inset:0,background:"rgba(28,20,16,0.55)",zIndex:150,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}><div style={{background:C.espresso,borderRadius:20,padding:"2rem 2.5rem",textAlign:"center",maxWidth:280}}><div style={{animation:"pulse 2s ease-in-out infinite",marginBottom:"1rem"}}><ZirvoyMark size={40} color={C.terracotta}/></div><p style={{color:C.sand,fontFamily:"'Cormorant Garamond',serif",fontSize:"1.2rem",margin:"0 0 0.35rem"}}>Updating your trip…</p><p style={{color:"rgba(242,232,217,0.5)",fontSize:"0.78rem",margin:0,fontWeight:300}}>Applying your changes</p></div></div>}
