@@ -1226,7 +1226,7 @@ function DecideModal({onClose,onGenerate}){
 function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,loading,destImages=[]}){
   const[input,setInput]=useState("");
   const[focused,setFocused]=useState(false);
-  const firstName=profile?.first_name||"there";
+  const firstName=profile?.first_name||null;
   const suggestions=[
     {label:"Weekend escape",text:"Romantic weekend in Europe, 2 people, budget around £1,000"},
     {label:"Group trip",text:"5 nights for 4 friends somewhere fun, £700 each"},
@@ -1240,7 +1240,7 @@ function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,loading,
           <div style={{maxWidth:640,margin:"0 auto"}}>
             <ZirvoyLogo light/>
             <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"clamp(1.8rem,5vw,2.4rem)",fontWeight:600,color:C.sand,margin:"0.85rem 0 0.25rem",lineHeight:1.15}}>
-              Where to next{firstName!=="there"?`, ${firstName}`:``}?
+              Where to next{firstName?`, ${firstName}`:``}?
             </h1>
             <p style={{color:"rgba(242,232,217,0.5)",fontSize:"0.82rem",margin:0,fontWeight:300}}>
               Full AI trip plan in seconds.
