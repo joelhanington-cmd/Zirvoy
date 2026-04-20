@@ -37,8 +37,8 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        max_tokens: 2200,
-        temperature: 0.85,
+        max_tokens: 2400,
+        temperature: 0.7,
         messages: [
           {
             role: "system",
@@ -46,11 +46,36 @@ export default async function handler(req, res) {
 
 You MUST respond with ONLY valid JSON — no markdown, no backticks, no explanation. Just the raw JSON object.
 
-FLIGHT RULES:
-- Only recommend DIRECT (non-stop) flights from a UK airport
-- Only suggest connecting flight if genuinely no direct route exists — say so explicitly
-- Always name the specific UK departure airport
-- Frame prices as estimates: "typically from £X" or "est. £X-£Ypp return"
+ACCURACY IS YOUR TOP PRIORITY. Do not hallucinate flights, airlines, or travel times. If you are not certain a route exists, do not invent it.
+
+═══ FLIGHT RULES — READ CAREFULLY ═══
+
+1. DIRECT FLIGHTS ONLY unless genuinely none exist. A direct/non-stop flight means no stop, no plane change.
+
+2. ONLY cite a direct route if you are highly confident it operates as a year-round scheduled service from a UK airport. Do NOT cite seasonal ski charter flights (e.g. Innsbruck, Chambéry, Grenoble, Salzburg winter-only) as if they are regular year-round routes.
+
+3. FLIGHT TIMES must be realistic and accurate:
+   - London to short-haul Europe (Spain, France, Italy, Greece): 2h–3h30
+   - London to medium-haul (Turkey, Egypt, Canaries): 3h30–5h
+   - London to long-haul (Southeast Asia, USA, Caribbean): 10h–14h
+   - Innsbruck from UK: NO year-round direct scheduled service — only seasonal charters
+   - Never say "1h40" for Innsbruck or Alpine ski resorts — this is wrong
+   - Always double-check your stated duration makes geographical sense
+
+4. NAME THE ACTUAL AIRLINE that operates the route (e.g. easyJet, Ryanair, British Airways, Jet2, TUI, Wizz Air, Turkish Airlines). Do not invent codeshares or routes.
+
+5. NAME THE SPECIFIC UK DEPARTURE AIRPORT (e.g. London Gatwick, London Heathrow, Manchester, Bristol, Edinburgh).
+
+6. If only connecting flights exist, say so honestly: "No direct UK service — typically via [hub] with [airline], total journey around Xh."
+
+7. Price estimates: use "typically from £X return" or "est. £X–£Y pp return".
+
+═══ DESTINATION RULES ═══
+
+- Only suggest destinations with reliable, well-established UK flight connections
+- Never suggest a destination where the only access from UK is a 3+ leg journey unless explicitly requested
+- Budget figures must be realistic for the destination and trip length — do not underestimate
+- All itinerary restaurants, cafés and bars must be REAL, named establishments that genuinely exist at that destination
 
 The JSON must follow this exact structure:
 {
@@ -127,18 +152,20 @@ The JSON must follow this exact structure:
   ]
 }
 
-Rules:
-- budgetTotal must equal sum of all breakdown values
-- budgetPerPerson must equal budgetTotal divided by travellers
-- itinerary length must match duration field exactly
-- All budget figures in GBP
-- CRITICAL: Every single morning/afternoon/evening MUST name at least one specific real restaurant, café or bar — never say "find a local restaurant" or "grab lunch somewhere". Always use real names.
-- Name specific streets, squares, neighbourhoods — never say "explore the old town" without naming it
-- The tip must be genuinely useful — never generic
+RULES:
+- budgetTotal must equal the exact sum of all breakdown values — check your arithmetic
+- budgetPerPerson must equal budgetTotal divided by travellers — check your arithmetic
+- itinerary length must match duration field exactly — count the days
+- All budget figures in GBP, realistic for destination and trip length
+- CRITICAL: Every morning/afternoon/evening entry MUST name at least one specific real restaurant, café or bar with its actual name — never say "find a local restaurant", "grab lunch somewhere", or "explore local eateries"
+- Name specific streets, squares, landmarks and neighbourhoods — never say "explore the old town" without naming it
+- The insider tip must be a genuinely local secret — not tourist board copy, not generic advice
 - weather.avoidMonths can be null if there are no genuinely bad months
-- imageQuery values must be 2-3 words, specific enough to return a beautiful relevant photo
-- storySlides must always have exactly 6 slides: destination, flight, hotel, then 3 activities
-- Activity slides should be the most visually spectacular things from the itinerary`,
+- imageQuery values: 2-3 words, specific and visual
+- storySlides: exactly 6 slides — destination, flight, hotel, then 3 activities
+- Activity slides: the most visually spectacular things from the itinerary
+- The "flights" field text must match your actual flight knowledge — if you said direct 2h25 from Gatwick, that must be a real route
+- BEFORE FINALISING: mentally verify the flight duration you've stated is geographically plausible`,
           },
           {
             role: "user",
