@@ -908,40 +908,30 @@ function LoginScreen({onSuccess,onCreateAccount}){const[form,setForm]=useState({
 function TripRevealScreen({trip,onContinue}){
   const[imgLoaded,setImgLoaded]=useState(false);
   const[visible,setVisible]=useState(false);
-  const DURATION=3200;
+  const[faded,setFaded]=useState(false);
+  const HOLD=5200;
   useEffect(()=>{
     const show=setTimeout(()=>setVisible(true),60);
-    const next=setTimeout(()=>onContinue(),DURATION);
-    return()=>{clearTimeout(show);clearTimeout(next);};
+    const fade=setTimeout(()=>setFaded(true),HOLD);
+    return()=>{clearTimeout(show);clearTimeout(fade);};
   },[]);
   return(
     <div style={{position:"fixed",inset:0,background:C.espresso,zIndex:150,fontFamily:"'DM Sans',sans-serif",overflow:"hidden"}}>
-      {/* Hero image */}
+      {/* Hero image — fades out in phase 2 */}
       {trip.photo&&<img src={trip.photo} alt={trip.destination} onLoad={()=>setImgLoaded(true)}
         style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",
-          opacity:imgLoaded&&visible?1:0,transition:"opacity 1.4s ease",filter:"brightness(0.75)"}}/>}
-      {/* Dark gradient */}
-      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(28,20,16,0.05) 0%,rgba(28,20,16,0.5) 50%,rgba(28,20,16,0.97) 100%)"}}/>
-      {/* Progress bar */}
-      <div style={{position:"absolute",top:0,left:0,right:0,height:2.5,background:"rgba(255,255,255,0.08)"}}>
+          opacity:faded?0:imgLoaded&&visible?1:0,transition:faded?"opacity 1.2s ease":"opacity 1.4s ease",filter:"brightness(0.75)"}}/>}
+      {/* Dark gradient — fades out too */}
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(28,20,16,0.05) 0%,rgba(28,20,16,0.5) 50%,rgba(28,20,16,0.97) 100%)",opacity:faded?0:1,transition:"opacity 1.2s ease"}}/>
+      {/* Progress bar — only in phase 1 */}
+      {!faded&&<div style={{position:"absolute",top:0,left:0,right:0,height:2.5,background:"rgba(255,255,255,0.08)"}}>
         <div style={{height:"100%",background:C.terracotta,borderRadius:2,
-          animation:`revealProgress ${DURATION}ms linear forwards`}}/>
-      </div>
-      {/* Zirvoy logo */}
-      <div style={{position:"absolute",top:"1.5rem",left:"1.5rem",opacity:visible?1:0,transition:"opacity 0.6s ease 0.2s"}}>
-        <ZirvoyLogo light size="sm"/>
-      </div>
-      {/* Skip button */}
-      <button onClick={onContinue} style={{position:"absolute",top:"1.35rem",right:"1.5rem",
-        background:"rgba(28,20,16,0.45)",backdropFilter:"blur(8px)",border:"1px solid rgba(242,232,217,0.2)",
-        color:C.sand,padding:"0.35rem 0.9rem",borderRadius:20,fontSize:"0.75rem",fontWeight:500,
-        cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
-        opacity:visible?1:0,transition:"opacity 0.6s ease 0.4s"}}>
-        Skip →
-      </button>
-      {/* Content */}
+          animation:`revealProgress ${HOLD}ms linear forwards`}}/>
+      </div>}
+      {/* Phase 1: destination content */}
       <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"2rem 1.75rem 4.5rem",
-        animation:visible?"fadeUp 0.9s ease 0.35s both":"none"}}>
+        opacity:faded?0:1,transition:"opacity 1s ease",
+        animation:visible&&!faded?"fadeUp 0.9s ease 0.35s both":"none",pointerEvents:faded?"none":"auto"}}>
         <p style={{fontSize:"0.62rem",fontWeight:600,color:C.terra2,letterSpacing:"0.22em",
           textTransform:"uppercase",margin:"0 0 0.5rem"}}>{trip.country}</p>
         <h1 style={{fontFamily:"'Cormorant Garamond',serif",
@@ -950,13 +940,26 @@ function TripRevealScreen({trip,onContinue}){
           {trip.destination}
         </h1>
         <p style={{fontSize:"clamp(0.9rem,3vw,1.05rem)",color:"rgba(242,232,217,0.65)",
-          margin:"0 0 2rem",lineHeight:1.6,fontWeight:300,maxWidth:380}}>
+          margin:0,lineHeight:1.6,fontWeight:300,maxWidth:380}}>
           {trip.tagline}
         </p>
+      </div>
+      {/* Skip button — phase 1 only */}
+      <button onClick={onContinue} style={{position:"absolute",top:"1.35rem",right:"1.5rem",
+        background:"rgba(28,20,16,0.45)",backdropFilter:"blur(8px)",border:"1px solid rgba(242,232,217,0.2)",
+        color:C.sand,padding:"0.35rem 0.9rem",borderRadius:20,fontSize:"0.75rem",fontWeight:500,
+        cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
+        opacity:faded?0:visible?1:0,transition:"opacity 0.6s ease",pointerEvents:faded?"none":"auto"}}>
+        Skip →
+      </button>
+      {/* Phase 2: logo + CTA — fades in */}
+      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"2rem",
+        opacity:faded?1:0,transition:"opacity 1.2s ease 0.4s",pointerEvents:faded?"auto":"none"}}>
+        <ZirvoyLogo light/>
         <button onClick={onContinue}
-          style={{padding:"0.9rem 2rem",background:C.terracotta,color:C.white,border:"none",
-            borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:"pointer",
-            fontFamily:"'DM Sans',sans-serif"}}>
+          style={{padding:"1rem 2.5rem",background:C.terracotta,color:C.white,border:"none",
+            borderRadius:14,fontSize:"1rem",fontWeight:600,cursor:"pointer",
+            fontFamily:"'DM Sans',sans-serif",letterSpacing:"0.01em"}}>
           View my trip plan →
         </button>
       </div>
