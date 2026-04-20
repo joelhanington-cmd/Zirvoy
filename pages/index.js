@@ -1431,7 +1431,7 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
         {/* Insider tip */}
         <div style={{background:tipFresh?"#2a1a0e":C.espresso,borderRadius:18,padding:"1.4rem 1.5rem",marginBottom:"1rem",position:"relative",overflow:"hidden",transition:"background 0.4s ease"}}>
           <div style={{position:"absolute",top:-25,right:-25,width:120,height:120,borderRadius:"50%",border:"1px solid rgba(196,98,45,0.18)"}}/>
-          <div style={{position:"absolute",top:8,right:10,opacity:0.1}}><ZirvoyMark size={52} color={C.terracotta}/></div>
+          <div style={{position:"absolute",top:8,right:10,opacity:0.1,pointerEvents:"none"}}><ZirvoyMark size={52} color={C.terracotta}/></div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:7,marginBottom:"0.65rem"}}>
             <div style={{display:"flex",alignItems:"center",gap:7}}><div style={{width:3,height:12,background:C.terracotta,borderRadius:2}}/><p style={{fontSize:"0.65rem",fontWeight:600,color:C.terracotta,textTransform:"uppercase",letterSpacing:"0.16em",margin:0}}>Zirvoy Insider Tip</p></div>
             <button onClick={refreshTip} disabled={tipLoading} style={{background:tipFresh?"rgba(100,200,100,0.2)":"rgba(196,98,45,0.18)",border:`1px solid ${tipFresh?"rgba(100,200,100,0.4)":"rgba(196,98,45,0.3)"}`,color:tipFresh?"#7ecf7e":C.terra2,padding:"0.25rem 0.65rem",borderRadius:20,fontSize:"0.68rem",fontWeight:500,cursor:tipLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.3s"}}>{tipLoading?"…":tipFresh?"✓ Updated":"↻ New tip"}</button>
