@@ -125,7 +125,7 @@ function BookingScreen({trip,onBack,onDone,onSummary,homeAirport}){
     }catch(e){console.error(e);}
     finally{setRefineLoading(false);}
   };
-  const buildTransfersUrl=()=>`https://www.welcomepickups.com/${encodeURIComponent(trip.destination.toLowerCase().replace(/\s+/g,'-'))}/`;
+  const buildTransfersUrl=()=>`https://www.welcomepickups.com/${encodeURIComponent(trip.destination.toLowerCase().replace(/\s+/g,'-'))}/?pickup_date=${departDate}`;
 
   const suggestDates=()=>{
     if(!whenInsight?.bestMonths)return;
@@ -262,7 +262,7 @@ function BookingScreen({trip,onBack,onDone,onSummary,homeAirport}){
   // Build GetYourGuide link
   const buildGYGUrl=()=>{
     const dest=encodeURIComponent(trip.destination);
-    return `https://www.getyourguide.com/s/?q=${dest}&currency=GBP&language=en`;
+    return `https://www.getyourguide.com/s/?q=${dest}&date_from=${departDate}&date_to=${returnDate}&currency=GBP&language=en`;
   };
 
   const stepContent=[
@@ -646,7 +646,7 @@ function BookingScreen({trip,onBack,onDone,onSummary,homeAirport}){
             <div style={{fontSize:"0.72rem",color:C.muted,marginTop:3,fontWeight:300}}>Tours & experiences</div>
           </a>
           {/* Restaurants */}
-          <a href={`https://www.tripadvisor.co.uk/Search?q=${encodeURIComponent(trip.destination+"+restaurants")}`} target="_blank" rel="noopener noreferrer"
+          <a href={`https://www.tripadvisor.co.uk/Search?q=${encodeURIComponent(trip.destination+"+restaurants")}&checkin=${departDate}&checkout=${returnDate}`} target="_blank" rel="noopener noreferrer"
             style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:16,padding:"1.1rem 1rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"left",textDecoration:"none",display:"block",transition:"all 0.2s"}}>
             <div style={{fontSize:"1.5rem",marginBottom:"0.4rem"}}>🍽</div>
             <div style={{fontSize:"0.85rem",fontWeight:600,color:C.espresso,lineHeight:1.3}}>Browse restaurants?</div>
@@ -1657,9 +1657,11 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
     finally{setSavingFlight(false);}
   };
 
-  const buildTransfersUrl=()=>`https://www.welcomepickups.com/${encodeURIComponent(trip.destination.toLowerCase().replace(/\s+/g,'-'))}/`;
-  const buildGYGUrl=()=>`https://www.getyourguide.com/s/?q=${encodeURIComponent(trip.destination)}&currency=GBP`;
-  const buildRestaurantsUrl=()=>`https://www.tripadvisor.co.uk/Search?q=${encodeURIComponent(trip.destination+"+restaurants")}`;
+  const summaryDepart=trip.departDate||"";
+  const summaryReturn=(()=>{if(!trip.departDate)return "";const d=new Date(trip.departDate);d.setDate(d.getDate()+(trip.duration||7));return d.toISOString().split("T")[0];})();
+  const buildTransfersUrl=()=>`https://www.welcomepickups.com/${encodeURIComponent(trip.destination.toLowerCase().replace(/\s+/g,'-'))}/${summaryDepart?`?pickup_date=${summaryDepart}`:""}`;
+  const buildGYGUrl=()=>`https://www.getyourguide.com/s/?q=${encodeURIComponent(trip.destination)}${summaryDepart?`&date_from=${summaryDepart}&date_to=${summaryReturn}`:""}&currency=GBP`;
+  const buildRestaurantsUrl=()=>`https://www.tripadvisor.co.uk/Search?q=${encodeURIComponent(trip.destination+"+restaurants")}${summaryDepart?`&checkin=${summaryDepart}&checkout=${summaryReturn}`:""}`;
 
   return(
     <div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif",paddingBottom:100}}>
