@@ -1944,12 +1944,14 @@ export default function Home(){
   const[authPromptAction,setAuthPromptAction]=useState(null);
   const[showReveal,setShowReveal]=useState(false);
 
-  // Restore session state after refresh
+  // Restore session state on load (localStorage survives tab close / browser kill)
   useEffect(()=>{
     try{
-      const saved=sessionStorage.getItem("zirvoy_session");
+      const saved=localStorage.getItem("zirvoy_session");
       if(saved){
         const s=JSON.parse(saved);
+        // Expire after 30 days
+        if(s.savedAt&&Date.now()-s.savedAt>30*24*60*60*1000){localStorage.removeItem("zirvoy_session");return;}
         if(s.trip){setTrip(s.trip);setScreen("results");}
         if(s.tripSaved)setTripSaved(s.tripSaved);
         if(s.savedTripId)setSavedTripId(s.savedTripId);
@@ -1963,12 +1965,32 @@ export default function Home(){
   useEffect(()=>{
     try{
       if(trip){
-        sessionStorage.setItem("zirvoy_session",JSON.stringify({trip,tripSaved,savedTripId,originalRequest,showSummary}));
+        localStorage.setItem("zirvoy_session",JSON.stringify({trip,tripSaved,savedTripId,originalRequest,showSummary,savedAt:Date.now()}));
       }else{
-        sessionStorage.removeItem("zirvoy_session");
+        localStorage.removeItem("zirvoy_session");
       }
     }catch(e){}
   },[trip,tripSaved,savedTripId,originalRequest,showSummary]);
+
+  // Intercept browser back button to navigate within the app
+  const _backRef=useRef({});
+  useEffect(()=>{_backRef.current={trip,showBooking,showSummary,showReveal};},[trip,showBooking,showSummary,showReveal]);
+  useEffect(()=>{
+    if(typeof window==="undefined")return;
+    window.history.pushState({zirvoy:true},"","/");
+    const onPop=()=>{
+      const s=_backRef.current;
+      if(s.trip){
+        if(s.showBooking)setShowBooking(false);
+        else if(s.showSummary)setShowSummary(false);
+        else if(s.showReveal)setShowReveal(false);
+        else setScreen("home");
+        window.history.pushState({zirvoy:true},"","/");
+      }
+    };
+    window.addEventListener("popstate",onPop);
+    return()=>window.removeEventListener("popstate",onPop);
+  },[]);
 
   useEffect(()=>{fetch("/api/destinations").then(r=>r.json()).then(d=>{if(d.photos?.length)setDestImages(d.photos.map(p=>p.url));}).catch(()=>{});},[]);
 
@@ -2021,6 +2043,7 @@ export default function Home(){
       const data=await res.json();
       if(!res.ok||!data.trip)throw new Error(data.error||"Something went wrong");
       setTrip(data.trip);
+      try{localStorage.setItem("zirvoy_session",JSON.stringify({trip:data.trip,tripSaved:false,savedTripId:null,originalRequest:request,showSummary:false,savedAt:Date.now()}));}catch(e){}
       setShowReveal(true);
       // Auto-save trip
       if(user){const saved=await saveTrip(user.id,data.trip);if(saved)setTripSaved(true);}
@@ -2035,7 +2058,7 @@ export default function Home(){
   };
   const handleGenerate=(req)=>{setOriginalRequest(req);generate(req);};
   const handleRefine=(extra)=>generate(`${originalRequest}. Additional preferences: ${extra}`);
-  const handleNewTrip=()=>{setTrip(null);setOriginalRequest("");setError(null);setTripSaved(false);setSavedTripId(null);setShowStory(false);setShowBooking(false);setShowSummary(false);setShowReveal(false);setScreen("home");setActiveTab("home");try{sessionStorage.removeItem("zirvoy_session");}catch(e){}};
+  const handleNewTrip=()=>{setTrip(null);setOriginalRequest("");setError(null);setTripSaved(false);setSavedTripId(null);setShowStory(false);setShowBooking(false);setShowSummary(false);setShowReveal(false);setScreen("home");setActiveTab("home");try{localStorage.removeItem("zirvoy_session");}catch(e){}};
   const handleTripClick=(t)=>{setTrip(t.trip_data);setTripSaved(true);setShowStory(false);setShowBooking(false);setShowSummary(false);setScreen("results");setActiveTab("home");};
   const handleSummaryClick=(t)=>{setTrip(t.trip_data);setTripSaved(true);setShowStory(false);setShowBooking(false);setShowSummary(true);};
   const handleOpenSummary=()=>{setShowSummary(true);setShowBooking(false);};
