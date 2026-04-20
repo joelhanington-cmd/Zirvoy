@@ -247,7 +247,7 @@ function BookingScreen({trip,onBack,onDone,onSummary,homeAirport}){
     };
     const key=trip.destination.toLowerCase();
     const destCode=Object.entries(IATA).find(([k])=>key.includes(k))?.[1]||'anywhere';
-    const originCode=getOriginIATA(homeAirport||profile?.home_airport);
+    const originCode=getOriginIATA(homeAirport);
     const travellers=trip.travellers||2;
     const fmt2=(s)=>s.replace(/-/g,"");
     return `https://www.skyscanner.net/transport/flights/${originCode}/${destCode}/${fmt2(departDate)}/${fmt2(returnDate)}/?adults=${travellers}&cabinclass=economy&currency=GBP&locale=en-GB&market=UK`;
