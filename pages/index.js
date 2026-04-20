@@ -1240,7 +1240,7 @@ function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,loading,
           <div style={{maxWidth:640,margin:"0 auto"}}>
             <ZirvoyLogo light/>
             <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"clamp(1.8rem,5vw,2.4rem)",fontWeight:600,color:C.sand,margin:"0.85rem 0 0.25rem",lineHeight:1.15}}>
-              Where to next, {firstName}?
+              Where to next{firstName!=="there"?`, ${firstName}`:``}?
             </h1>
             <p style={{color:"rgba(242,232,217,0.5)",fontSize:"0.82rem",margin:0,fontWeight:300}}>
               Full AI trip plan in seconds.
