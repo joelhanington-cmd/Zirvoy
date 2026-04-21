@@ -60,6 +60,7 @@ function BottomNav({active,onChange}){
 function BookingScreen({trip,onBack,onDone,onSummary,homeAirport}){
   const[step,setStep]=useState(0); // 0=flights, 1=hotels, 2=celebration
   const steps=["Flights","Hotels"];
+  const allSteps=["Dates","Flights","Hotels"];
 
   // Date state — default to 4 weeks from today
   const defaultDepart=()=>{const d=new Date();d.setDate(d.getDate()+28);return d.toISOString().split("T")[0];};
@@ -69,9 +70,9 @@ function BookingScreen({trip,onBack,onDone,onSummary,homeAirport}){
   const[returnDate,setReturnDate]=useState(()=>defaultReturn(defaultDepart()));
   const handleDepartChange=(v)=>{setDepartDate(v);setReturnDate(defaultReturn(v));};
   // Hotel finder
-  const[hotelStyle,setHotelStyle]=useState(null);
-  const[hotelPriority,setHotelPriority]=useState(null);
-  const[roomType,setRoomType]=useState(null);
+  const[hotelStyle,setHotelStyle]=useState("Mid-range comfort");
+  const[hotelPriority,setHotelPriority]=useState("City-centre location");
+  const[roomType,setRoomType]=useState("Double room");
   const[hotelExtras,setHotelExtras]=useState("");
   const[hotelRecs,setHotelRecs]=useState(null);
   const[hotelLoading,setHotelLoading]=useState(false);
@@ -307,6 +308,10 @@ function BookingScreen({trip,onBack,onDone,onSummary,homeAirport}){
         <ZirvoyLogo light/>
         <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.8rem",fontWeight:600,color:C.sand,margin:"1rem 0 0.25rem"}}>When are you going?</h2>
         <p style={{fontSize:"0.85rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>Set your dates for accurate flight & hotel prices</p>
+        <div style={{display:"flex",gap:6,marginTop:"1.25rem"}}>
+          {allSteps.map((s,i)=>(<div key={i} style={{flex:1,height:3,borderRadius:2,background:i===0?"rgba(196,98,45,0.8)":"rgba(242,232,217,0.15)"}}/>))}
+        </div>
+        <p style={{fontSize:"0.72rem",color:"rgba(242,232,217,0.4)",margin:"0.5rem 0 0",fontWeight:300}}>Step 1 of 3</p>
       </div>
     </CyclingHeader>
     <div style={{padding:"1.75rem 1.5rem",maxWidth:480,margin:"0 auto"}}>
@@ -377,9 +382,9 @@ function BookingScreen({trip,onBack,onDone,onSummary,homeAirport}){
         <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:step===2?"2rem":"1.8rem",fontWeight:600,color:C.sand,margin:"1rem 0 0.25rem",lineHeight:1.1}}>
           {step===2?`You're going to ${trip.destination}!`:`Let's book ${trip.destination}`}
         </h2>
-        <p style={{fontSize:"0.82rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>{step<steps.length?`Step ${step+1} of ${steps.length}`:"Trip confirmed ✓"}</p>
+        <p style={{fontSize:"0.82rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>{step<steps.length?`Step ${step+2} of 3`:"Trip confirmed ✓"}</p>
         <div style={{display:"flex",gap:6,marginTop:"1.25rem"}}>
-          {steps.map((s,i)=>(<div key={i} style={{flex:1,height:3,borderRadius:2,background:i<=step?"rgba(196,98,45,0.8)":"rgba(242,232,217,0.15)",transition:"background 0.3s"}}/>))}
+          {allSteps.map((s,i)=>(<div key={i} style={{flex:1,height:3,borderRadius:2,background:i===0||i-1<=step?"rgba(196,98,45,0.8)":"rgba(242,232,217,0.15)",transition:"background 0.3s"}}/>))}
         </div>
       </div>
     </CyclingHeader>
@@ -1202,7 +1207,7 @@ function TripStoryScreen({trip,onSkip,onBook}){
     </div>
   </div>);}
 
-function DecideModal({onClose,onGenerate}){
+function DecideModal({onClose,onGenerate,profile}){
   const AIRPORT_STEP={id:"airport",q:"Where are you flying from?",sub:"We'll plan flights from your nearest airport"};
   const questions=[
     {id:"type",q:"Beach or city?",sub:"What kind of destination are you after?",options:[
@@ -1248,8 +1253,8 @@ function DecideModal({onClose,onGenerate}){
   ];
   const totalSteps=questions.length+1; // +1 for airport step
   const[step,setStep]=useState(0); // 0 = airport, 1+ = questions
-  const[airport,setAirport]=useState("");
-  const[airportQuery,setAirportQuery]=useState("");
+  const[airport,setAirport]=useState(profile?.home_airport||"");
+  const[airportQuery,setAirportQuery]=useState(profile?.home_airport||"");
   const[showAirportDropdown,setShowAirportDropdown]=useState(false);
   const[airportFocused,setAirportFocused]=useState(false);
   const[answers,setAnswers]=useState({});
@@ -1347,7 +1352,7 @@ function DecideModal({onClose,onGenerate}){
   );
 }
 
-function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,loading,destImages=[]}){
+function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,onViewTrips,loading,destImages=[]}){
   const[input,setInput]=useState("");
   const[focused,setFocused]=useState(false);
   const firstName=profile?.first_name||null;
@@ -1374,44 +1379,48 @@ function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,loading,
       </CyclingHeader>
 
       <div style={{maxWidth:640,margin:"0 auto",padding:"1.5rem 1.5rem"}}>
-        {/* Primary CTA — guided flow */}
-        <button onClick={onDecide} disabled={loading}
-          style={{width:"100%",padding:"1.15rem",background:C.terracotta,color:C.white,border:"none",borderRadius:14,fontSize:"1rem",fontWeight:600,cursor:loading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"1.5rem",opacity:loading?0.5:1,display:"flex",alignItems:"center",justifyContent:"center",gap:"0.5rem",boxShadow:"0 4px 20px rgba(196,98,45,0.3)"}}>
-          ✨ Help me plan my trip
-        </button>
 
-        {/* Freeform input — secondary */}
-        <p style={{fontSize:"0.8rem",color:C.muted,margin:"0 0 0.65rem",fontWeight:300,lineHeight:1.5}}>Already know what kind of trip you want? Tell Zirvoy the vibe and let it plan for you.</p>
-        <div style={{background:C.white,borderRadius:18,padding:"1.25rem",marginBottom:"1.5rem",boxShadow:"0 4px 24px rgba(28,20,16,0.07)",border:`1px solid ${C.border}`}}>
-          <textarea value={input} onChange={e=>setInput(e.target.value)} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
-            placeholder='"5 nights in Europe for 2, budget £1,500, we love good food and history"'
-            rows={4} style={{width:"100%",background:C.sandLight,border:`1.5px solid ${focused?C.terracotta:C.border}`,borderRadius:10,padding:"1rem",fontSize:"0.93rem",color:C.ink,resize:"none",outline:"none",lineHeight:1.65,fontFamily:"'DM Sans',sans-serif",transition:"border-color 0.2s",boxSizing:"border-box"}}/>
-          <button onClick={()=>input.trim()&&!loading&&onGenerate(input.trim())} disabled={!input.trim()||loading}
-            style={{width:"100%",marginTop:"0.85rem",padding:"1rem",background:input.trim()&&!loading?C.espresso:C.parchment,color:input.trim()&&!loading?C.sand:C.muted,border:"none",borderRadius:10,fontSize:"0.93rem",fontWeight:600,cursor:input.trim()&&!loading?"pointer":"default",fontFamily:"'DM Sans',sans-serif",transition:"background 0.25s"}}>
-            {loading?"Planning your trip…":"Plan My Trip →"}
-          </button>
-        </div>
-
-        {/* Suggestion chips */}
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:"1rem"}}>
-          <div style={{flex:1,height:1,background:C.border}}/>
-          <span style={{fontSize:"0.65rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.14em",whiteSpace:"nowrap"}}>or try one of these</span>
-          <div style={{flex:1,height:1,background:C.border}}/>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.65rem",marginBottom:"1.75rem"}}>
+        {/* Quick-start chips — fastest path */}
+        <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.65rem"}}>Jump-start your trip</p>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.65rem",marginBottom:"1.25rem"}}>
           {suggestions.map((s,i)=>(
             <button key={i} onClick={()=>!loading&&onGenerate(s.text)} disabled={loading}
-              style={{padding:"0.9rem",borderRadius:12,border:`1px solid ${C.border}`,background:C.white,cursor:loading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"left"}}>
+              style={{padding:"0.9rem",borderRadius:12,border:`1px solid ${C.border}`,background:C.white,cursor:loading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"left",boxShadow:"0 1px 6px rgba(28,20,16,0.04)"}}>
               <div style={{fontSize:"0.62rem",fontWeight:600,color:C.terracotta,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"0.3rem"}}>{s.label}</div>
               <div style={{fontSize:"0.78rem",color:C.ink,lineHeight:1.45,fontWeight:300}}>{s.text}</div>
             </button>
           ))}
         </div>
 
+        {/* Guided wizard */}
+        <button onClick={onDecide} disabled={loading}
+          style={{width:"100%",padding:"1.1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:14,fontSize:"0.98rem",fontWeight:600,cursor:loading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"1.25rem",opacity:loading?0.5:1,display:"flex",alignItems:"center",justifyContent:"center",gap:"0.5rem",boxShadow:"0 4px 20px rgba(196,98,45,0.28)"}}>
+          ✨ Help me plan my trip
+        </button>
+
+        {/* Freeform input — for when you know exactly what you want */}
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:"0.85rem"}}>
+          <div style={{flex:1,height:1,background:C.border}}/>
+          <span style={{fontSize:"0.65rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.14em",whiteSpace:"nowrap"}}>or describe it yourself</span>
+          <div style={{flex:1,height:1,background:C.border}}/>
+        </div>
+        <div style={{background:C.white,borderRadius:18,padding:"1.1rem",marginBottom:"1.5rem",boxShadow:"0 2px 12px rgba(28,20,16,0.06)",border:`1px solid ${C.border}`}}>
+          <textarea value={input} onChange={e=>setInput(e.target.value)} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+            placeholder='"5 nights in Europe for 2, budget £1,500, we love good food and history"'
+            rows={3} style={{width:"100%",background:C.sandLight,border:`1.5px solid ${focused?C.terracotta:C.border}`,borderRadius:10,padding:"0.85rem",fontSize:"0.9rem",color:C.ink,resize:"none",outline:"none",lineHeight:1.65,fontFamily:"'DM Sans',sans-serif",transition:"border-color 0.2s",boxSizing:"border-box"}}/>
+          <button onClick={()=>input.trim()&&!loading&&onGenerate(input.trim())} disabled={!input.trim()||loading}
+            style={{width:"100%",marginTop:"0.65rem",padding:"0.9rem",background:input.trim()&&!loading?C.espresso:C.parchment,color:input.trim()&&!loading?C.sand:C.muted,border:"none",borderRadius:10,fontSize:"0.9rem",fontWeight:600,cursor:input.trim()&&!loading?"pointer":"default",fontFamily:"'DM Sans',sans-serif",transition:"background 0.25s"}}>
+            {loading?"Planning your trip…":"Plan My Trip →"}
+          </button>
+        </div>
+
         {/* Recent trips — horizontal scroll */}
         {trips.length>0&&(
           <div style={{marginBottom:"1rem"}}>
-            <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:"0.75rem"}}>Recent Trips</p>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"0.75rem"}}>
+              <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:0}}>Recent Trips</p>
+              {onViewTrips&&<button onClick={onViewTrips} style={{background:"transparent",border:"none",color:C.terracotta,fontSize:"0.78rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",padding:0}}>See all →</button>}
+            </div>
             <div style={{display:"flex",gap:"0.75rem",overflowX:"auto",paddingBottom:"0.5rem"}}>
               {trips.slice(0,5).map(t=>(
                 <div key={t.id} onClick={()=>onTripClick(t)}
@@ -1453,6 +1462,8 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
   const[copied,setCopied]=useState(false);
   const[tipLoading,setTipLoading]=useState(false);
   const[tipFresh,setTipFresh]=useState(false);
+  const[bannerDismissed,setBannerDismissed]=useState(()=>{try{return sessionStorage.getItem("zirvoy_banner_dismissed")==="1";}catch{return false;}});
+  const dismissBanner=()=>{setBannerDismissed(true);try{sessionStorage.setItem("zirvoy_banner_dismissed","1");}catch{}};
   const day=trip.itinerary?.[activeDay];
   const handleSave=async()=>{setSaving(true);await onSaveTrip();setSaved(true);setSaving(false);};
   const labels={flights:"Flights",hotel:"Hotel",food:"Food & Drink",activities:"Activities",misc:"Extras"};
@@ -1486,13 +1497,16 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
   const handleDayClick=(i)=>{setActiveDay(i);if(dayImages[i]===undefined)fetchDayImage(i);};
 
   const shareUrl=tripId?`https://zirvoy.com/trip/${tripId}`:null;
-  const shareText=shareUrl?`I'm going to ${trip.destination}! 🌍 ${trip.duration} nights planned with Zirvoy — ${shareUrl}`:`I'm going to ${trip.destination}! 🌍 ${trip.duration} nights planned with Zirvoy — zirvoy.com`;
-  const shareWhatsApp=()=>{window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`,"_blank");};
+  const shareMsg=shareUrl
+    ?`I'm going to ${trip.destination}! 🌍 ${trip.duration} nights, est. £${fmt(trip.budgetTotal)} — planned with Zirvoy\n${shareUrl}`
+    :`I'm going to ${trip.destination}! 🌍 ${trip.duration} nights, est. £${fmt(trip.budgetTotal)} — plan your own at zirvoy.com`;
+  const shareWhatsApp=()=>{window.open(`https://wa.me/?text=${encodeURIComponent(shareMsg)}`,"_blank");};
   const copyShare=()=>{
+    const val=shareUrl||shareMsg;
     const fallback=()=>{
-      try{const el=document.createElement("textarea");el.value=shareText;el.style.position="fixed";el.style.opacity="0";document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch(e){}
+      try{const el=document.createElement("textarea");el.value=val;el.style.position="fixed";el.style.opacity="0";document.body.appendChild(el);el.select();document.execCommand("copy");document.body.removeChild(el);setCopied(true);setTimeout(()=>setCopied(false),2500);}catch(e){}
     };
-    if(navigator.clipboard?.writeText){navigator.clipboard.writeText(shareText).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2500);}).catch(fallback);}else{fallback();}
+    if(navigator.clipboard?.writeText){navigator.clipboard.writeText(val).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2500);}).catch(fallback);}else{fallback();}
   };
 
   return(
@@ -1517,29 +1531,65 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
       </div>
 
       <div style={{maxWidth:640,margin:"0 auto",padding:"1.25rem clamp(1.25rem,5vw,2rem) 3rem"}}>
-        {/* Guest warning banner */}
-        {!user&&(<div style={{background:C.parchment,border:`1px solid ${C.border}`,borderRadius:14,padding:"0.85rem 1rem 0.85rem 1rem",marginBottom:"1rem",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"0.75rem"}}><div><p style={{fontFamily:"'DM Sans',sans-serif",fontSize:"0.82rem",fontWeight:600,color:C.espresso,margin:"0 0 0.15rem"}}>Don't lose this trip</p><p style={{fontFamily:"'DM Sans',sans-serif",fontSize:"0.75rem",color:C.muted,margin:0,fontWeight:300}}>Sign up free to save it permanently</p></div><button onClick={onSaveTrip} style={{flexShrink:0,padding:"0.55rem 1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:9,fontSize:"0.8rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",whiteSpace:"nowrap"}}>Save free →</button></div>)}
 
-        {/* Primary CTA */}
-        <button onClick={onLetsBook} style={{width:"100%",padding:"1.05rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.5rem"}}>Let's Book This Trip →</button>
+        {/* Guest save banner — dismissable */}
+        {!user&&!bannerDismissed&&(
+          <div style={{background:C.parchment,border:`1px solid ${C.border}`,borderRadius:14,padding:"0.8rem 1rem",marginBottom:"1rem",display:"flex",alignItems:"center",gap:"0.75rem"}}>
+            <div style={{flex:1}}>
+              <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:"0.82rem",fontWeight:600,color:C.espresso,margin:"0 0 0.1rem"}}>Don't lose this trip</p>
+              <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:"0.75rem",color:C.muted,margin:0,fontWeight:300}}>Sign up free to save it permanently</p>
+            </div>
+            <button onClick={onSaveTrip} style={{flexShrink:0,padding:"0.5rem 0.9rem",background:C.terracotta,color:C.white,border:"none",borderRadius:9,fontSize:"0.8rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",whiteSpace:"nowrap"}}>Save free →</button>
+            <button onClick={dismissBanner} style={{flexShrink:0,background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:"1rem",lineHeight:1,padding:"0.25rem",fontFamily:"'DM Sans',sans-serif"}}>×</button>
+          </div>
+        )}
 
-        {/* Plan in detail */}
-        <button onClick={onPlanTrip} style={{width:"100%",padding:"0.9rem",background:C.white,color:C.espresso,border:`1.5px solid ${C.espresso}`,borderRadius:12,fontSize:"0.9rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.5rem"}}>View full itinerary & plan →</button>
+        {/* Story teaser — prominent entry point */}
+        {trip.storySlides?.length>0&&onShowStory&&(
+          <button onClick={onShowStory} style={{width:"100%",padding:"0.85rem 1.1rem",background:C.espresso,border:"none",borderRadius:14,marginBottom:"1rem",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"0.65rem"}}>
+              <span style={{fontSize:"1.1rem"}}>▶</span>
+              <div style={{textAlign:"left"}}>
+                <p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1rem",fontWeight:600,color:C.sand,margin:0}}>Watch your trip story</p>
+                <p style={{fontSize:"0.72rem",color:"rgba(242,232,217,0.5)",margin:0,fontWeight:300}}>Photo highlight reel · {trip.storySlides.length} slides</p>
+              </div>
+            </div>
+            <span style={{color:C.terracotta,fontSize:"1.3rem"}}>→</span>
+          </button>
+        )}
 
-        {/* Secondary row: save + share */}
-        <div style={{display:"flex",gap:"0.5rem",marginBottom:"0.65rem"}}>
-          <button onClick={saved?undefined:handleSave} disabled={saved||saving} style={{flex:1,padding:"0.8rem",background:saved?C.parchment:C.white,color:saved?C.muted:C.espresso,border:`1.5px solid ${saved?C.border:C.espresso}`,borderRadius:10,fontSize:"0.82rem",fontWeight:500,cursor:saved?"default":"pointer",fontFamily:"'DM Sans',sans-serif"}}>{saving?"Saving…":saved?"✓ Saved":"Save trip"}</button>
-          <button onClick={shareWhatsApp} style={{padding:"0.8rem 1rem",background:"#25D366",color:C.white,border:"none",borderRadius:10,fontSize:"0.82rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>WhatsApp</button>
-          <button onClick={copyShare} style={{padding:"0.8rem 1rem",background:copied?C.terracotta:C.white,color:copied?C.white:C.espresso,border:`1.5px solid ${copied?C.terracotta:C.border}`,borderRadius:10,fontSize:"0.82rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{copied?"✓":"Copy"}</button>
-        </div>
+        {/* Primary action block — booked vs unbooked */}
+        {trip.isBooked?(
+          <div style={{background:C.espresso,borderRadius:14,padding:"1rem 1.1rem",marginBottom:"1rem",display:"flex",alignItems:"center",gap:"0.75rem"}}>
+            <span style={{fontSize:"1.3rem"}}>✈</span>
+            <div style={{flex:1}}>
+              <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:"0.85rem",fontWeight:600,color:C.sand,margin:0}}>Trip booked</p>
+              {trip.departDate&&<p style={{fontSize:"0.72rem",color:"rgba(242,232,217,0.55)",margin:"0.1rem 0 0",fontWeight:300}}>{trip.departDate}</p>}
+            </div>
+            <button onClick={onPlanTrip} style={{padding:"0.55rem 1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:9,fontSize:"0.8rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",whiteSpace:"nowrap"}}>View plan →</button>
+          </div>
+        ):(
+          <div style={{marginBottom:"0.75rem"}}>
+            <button onClick={onLetsBook} style={{width:"100%",padding:"1.05rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.95rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.45rem"}}>Find flights & hotels →</button>
+            <button onClick={onPlanTrip} style={{width:"100%",padding:"0.85rem",background:C.white,color:C.espresso,border:`1.5px solid ${C.border}`,borderRadius:12,fontSize:"0.88rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Build my itinerary with AI →</button>
+          </div>
+        )}
 
-        {/* Try again — subtle link */}
-        <button onClick={onTryAgain} style={{width:"100%",padding:"0.5rem",background:"transparent",color:C.muted,border:"none",fontSize:"0.82rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.75rem"}}>Not quite right? Tell Zirvoy what to change →</button>
+        {/* Weather — moved up, decision-critical */}
+        {trip.weather&&(
+          <div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.1rem 1.35rem",marginBottom:"1rem",boxShadow:"0 2px 16px rgba(28,20,16,0.05)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:"0.75rem"}}><div style={{width:3,height:14,background:C.terracotta,borderRadius:2}}/><p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:0}}>🌤 When to go</p></div>
+            <p style={{margin:"0 0 0.85rem",fontSize:"0.88rem",color:C.ink,lineHeight:1.65,fontWeight:300}}>{trip.weather.insight}</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.5rem"}}>
+              {[["✅ Best time",trip.weather.bestMonths],["🌡 Temperature",trip.weather.tempRange],["📈 Peak season",trip.weather.peakSeason],trip.weather.avoidMonths&&["⚠️ Avoid",trip.weather.avoidMonths]].filter(Boolean).map(([label,val])=>(<div key={label} style={{background:C.sandLight,borderRadius:10,padding:"0.65rem 0.75rem"}}><div style={{fontSize:"0.6rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"0.25rem"}}>{label}</div><div style={{fontSize:"0.8rem",fontWeight:500,color:C.espresso}}>{val}</div></div>))}
+            </div>
+          </div>
+        )}
 
         {/* Budget */}
         <div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.35rem",marginBottom:"1rem",boxShadow:"0 2px 16px rgba(28,20,16,0.05)"}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:"1rem"}}><div style={{width:3,height:14,background:C.terracotta,borderRadius:2}}/><p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:0}}>Estimated Budget</p></div>
-          <div style={{background:C.sandLight,borderRadius:8,padding:"0.6rem 0.85rem",marginBottom:"1rem",fontSize:"0.72rem",color:C.muted,lineHeight:1.5}}>Prices are estimates based on typical costs — always check live prices before booking.</div>
+          <div style={{background:C.sandLight,borderRadius:8,padding:"0.6rem 0.85rem",marginBottom:"1rem",fontSize:"0.72rem",color:C.muted,lineHeight:1.5}}>Estimates based on typical costs — always check live prices before booking.</div>
           <div style={{display:"flex",justifyContent:"space-around",paddingBottom:"1.25rem",marginBottom:"1.25rem",borderBottom:`1px solid ${C.parchment}`}}>
             {[["£"+fmt(trip.budgetTotal),"Est. Total"],["£"+fmt(trip.budgetPerPerson),"Per person"]].map(([val,lbl])=>(<div key={lbl} style={{textAlign:"center"}}><div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.85rem",fontWeight:600,color:C.espresso}}>{val}</div><div style={{fontSize:"0.65rem",color:C.muted,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:2}}>{lbl}</div></div>))}
           </div>
@@ -1548,8 +1598,8 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
 
         {/* Flights + Hotel */}
         <div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.35rem",marginBottom:"1rem",boxShadow:"0 2px 16px rgba(28,20,16,0.05)"}}>
-          <div style={{paddingBottom:"1rem",marginBottom:"1rem",borderBottom:`1px solid ${C.parchment}`}}><p style={{fontSize:"0.65rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.5rem"}}>✈  Flights</p><p style={{margin:0,fontSize:"0.88rem",color:C.ink,lineHeight:1.65,fontWeight:300}}>{trip.flights}</p></div>
-          <div><p style={{fontSize:"0.65rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.5rem"}}>🏨  Where to Stay</p><p style={{margin:0,fontSize:"0.88rem",color:C.ink,lineHeight:1.65,fontWeight:300}}>{trip.hotel}</p></div>
+          <div style={{paddingBottom:"1rem",marginBottom:"1rem",borderBottom:`1px solid ${C.parchment}`}}><p style={{fontSize:"0.65rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.5rem"}}>✈ Flights</p><p style={{margin:0,fontSize:"0.88rem",color:C.ink,lineHeight:1.65,fontWeight:300}}>{trip.flights}</p></div>
+          <div><p style={{fontSize:"0.65rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.5rem"}}>🏨 Where to Stay</p><p style={{margin:0,fontSize:"0.88rem",color:C.ink,lineHeight:1.65,fontWeight:300}}>{trip.hotel}</p></div>
         </div>
 
         {/* Insider tip */}
@@ -1560,19 +1610,8 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
             <div style={{display:"flex",alignItems:"center",gap:7}}><div style={{width:3,height:12,background:C.terracotta,borderRadius:2}}/><p style={{fontSize:"0.65rem",fontWeight:600,color:C.terracotta,textTransform:"uppercase",letterSpacing:"0.16em",margin:0}}>Zirvoy Insider Tip</p></div>
             <button onClick={refreshTip} disabled={tipLoading} style={{background:tipFresh?"rgba(100,200,100,0.2)":"rgba(196,98,45,0.18)",border:`1px solid ${tipFresh?"rgba(100,200,100,0.4)":"rgba(196,98,45,0.3)"}`,color:tipFresh?"#7ecf7e":C.terra2,padding:"0.25rem 0.65rem",borderRadius:20,fontSize:"0.68rem",fontWeight:500,cursor:tipLoading?"default":"pointer",fontFamily:"'DM Sans',sans-serif",transition:"all 0.3s"}}>{tipLoading?"…":tipFresh?"✓ Updated":"↻ New tip"}</button>
           </div>
-          <p key={trip.tip} style={{margin:0,fontFamily:"'Cormorant Garamond',serif",fontSize:"1.1rem",color:C.sand,lineHeight:1.8,fontStyle:"italic",transition:"opacity 0.3s"}}>{trip.tip}</p>
+          <p key={trip.tip} style={{margin:0,fontFamily:"'Cormorant Garamond',serif",fontSize:"1.1rem",color:C.sand,lineHeight:1.8,fontStyle:"italic"}}>{trip.tip}</p>
         </div>
-
-        {/* Weather */}
-        {trip.weather&&(
-          <div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.35rem",marginBottom:"1rem",boxShadow:"0 2px 16px rgba(28,20,16,0.05)"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:"1rem"}}><div style={{width:3,height:14,background:C.terracotta,borderRadius:2}}/><p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:0}}>🌤  Weather Guide</p></div>
-            <p style={{margin:"0 0 1rem",fontSize:"0.88rem",color:C.ink,lineHeight:1.65,fontWeight:300}}>{trip.weather.insight}</p>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.6rem"}}>
-              {[["✅ Best time",trip.weather.bestMonths],["🌡 Temperature",trip.weather.tempRange],["📈 Peak season",trip.weather.peakSeason],trip.weather.avoidMonths&&["⚠️ Avoid",trip.weather.avoidMonths]].filter(Boolean).map(([label,val])=>(<div key={label} style={{background:C.sandLight,borderRadius:10,padding:"0.75rem 0.85rem"}}><div style={{fontSize:"0.62rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"0.3rem"}}>{label}</div><div style={{fontSize:"0.82rem",fontWeight:500,color:C.espresso}}>{val}</div></div>))}
-            </div>
-          </div>
-        )}
 
         {/* Itinerary with day images */}
         {trip.itinerary?.length>0&&(
@@ -1590,7 +1629,6 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
             </div>
             {day&&(
               <div style={{borderTop:`1px solid ${C.parchment}`}}>
-                {/* Day image */}
                 {dayImages[activeDay]&&(
                   <div style={{height:160,overflow:"hidden",position:"relative"}}>
                     <img src={dayImages[activeDay]} alt={day.title} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
@@ -1612,7 +1650,31 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
           </div>
         )}
 
-        <button onClick={onNewTrip} style={{width:"100%",padding:"1rem",background:"transparent",color:C.muted,border:`1px solid ${C.border}`,borderRadius:14,fontSize:"0.88rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.75rem"}}>Plan Another Trip</button>
+        {/* Save — prominent */}
+        {!saved&&(
+          <button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"1rem",background:C.espresso,color:C.sand,border:"none",borderRadius:12,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.5rem"}}>
+            {saving?"Saving…":"Save this trip →"}
+          </button>
+        )}
+        {saved&&(
+          <div style={{background:C.parchment,borderRadius:12,padding:"0.85rem 1rem",marginBottom:"0.5rem",display:"flex",alignItems:"center",gap:"0.5rem"}}>
+            <span style={{color:C.terracotta}}>✓</span>
+            <span style={{fontSize:"0.85rem",color:C.espresso,fontWeight:500,fontFamily:"'DM Sans',sans-serif"}}>Trip saved to your account</span>
+          </div>
+        )}
+
+        {/* Share row */}
+        <div style={{display:"flex",gap:"0.5rem",marginBottom:"0.35rem"}}>
+          <button onClick={shareWhatsApp} style={{flex:1,padding:"0.75rem",background:"#25D366",color:C.white,border:"none",borderRadius:10,fontSize:"0.82rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Share on WhatsApp</button>
+          <button onClick={copyShare} style={{flex:1,padding:"0.75rem",background:copied?C.terracotta:C.white,color:copied?C.white:C.espresso,border:`1.5px solid ${copied?C.terracotta:C.border}`,borderRadius:10,fontSize:"0.82rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>{copied?"✓ Copied!":`Copy ${shareUrl?"link":"details"}`}</button>
+        </div>
+        {!shareUrl&&<p style={{fontSize:"0.72rem",color:C.muted,margin:"0 0 0.75rem",textAlign:"center",fontWeight:300}}>💡 Save your trip to generate a shareable link</p>}
+
+        {/* Refine + reset */}
+        <button onClick={onTryAgain} style={{width:"100%",padding:"0.5rem",background:"transparent",color:C.muted,border:"none",fontSize:"0.82rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"0.25rem",marginBottom:"0.5rem"}}>Not quite right? Tell Zirvoy what to change →</button>
+        <button onClick={onNewTrip} style={{width:"100%",padding:"0.9rem",background:"transparent",color:!user&&!saved?"#c0392b":C.muted,border:`1px solid ${!user&&!saved?"#c0392b":C.border}`,borderRadius:14,fontSize:"0.85rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.75rem"}}>
+          {!user&&!saved?"Start over — this trip will be lost":"Plan Another Trip"}
+        </button>
       </div>
     </div>
   );
@@ -2246,7 +2308,7 @@ export default function Home(){
       {loading&&!trip&&<LoadingScreen input={originalRequest}/>}
 
       {/* Trip reveal — smooth landing after generation */}
-      {!loading&&trip&&showReveal&&<TripRevealScreen trip={trip} onContinue={()=>{setShowReveal(false);setShowSummary(true);}}/>}
+      {!loading&&trip&&showReveal&&<TripRevealScreen trip={trip} onContinue={()=>{setShowReveal(false);}}/>}
 
       {/* Overlay for refine/update (trip already exists) */}
       {loading&&trip&&<div style={{position:"fixed",inset:0,background:"rgba(28,20,16,0.55)",zIndex:150,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}><div style={{background:C.espresso,borderRadius:20,padding:"2rem 2.5rem",textAlign:"center",maxWidth:280}}><div style={{animation:"pulse 2s ease-in-out infinite",marginBottom:"1rem"}}><ZirvoyMark size={40} color={C.terracotta}/></div><p style={{color:C.sand,fontFamily:"'Cormorant Garamond',serif",fontSize:"1.2rem",margin:"0 0 0.35rem"}}>Updating your trip…</p><p style={{color:"rgba(242,232,217,0.5)",fontSize:"0.78rem",margin:0,fontWeight:300}}>Applying your changes</p></div></div>}
@@ -2264,8 +2326,8 @@ export default function Home(){
       )}
 
       {!(showStory&&screen==="results")&&!showBooking&&!showSummary&&(<>
-        {activeTab==="home"&&screen==="home"&&<HomeScreen user={user} profile={profile} trips={trips} onGenerate={handleGenerate} onDecide={()=>setShowDecide(true)} onTripClick={handleTripClick} loading={loading} destImages={destImages}/>}
-        {showDecide&&<DecideModal onClose={()=>setShowDecide(false)} onGenerate={handleGenerate}/>}
+        {activeTab==="home"&&screen==="home"&&<HomeScreen user={user} profile={profile} trips={trips} onGenerate={handleGenerate} onDecide={()=>setShowDecide(true)} onTripClick={handleTripClick} onViewTrips={user?()=>setActiveTab("trips"):undefined} loading={loading} destImages={destImages}/>}
+        {showDecide&&<DecideModal onClose={()=>setShowDecide(false)} onGenerate={handleGenerate} profile={profile}/>}
         {activeTab==="home"&&screen==="results"&&trip&&(<><ResultsScreen trip={trip} onNewTrip={handleNewTrip} onTryAgain={()=>setShowRefine(true)} onLetsBook={handleLetsBook} onSaveTrip={handleManualSave} isSaved={tripSaved} onShowStory={trip.storySlides?.length>0?()=>setShowStory(true):undefined} onPlanTrip={handleOpenSummary} tripId={savedTripId} user={user}/>{showRefine&&<RefineModal destination={trip.destination} onClose={()=>setShowRefine(false)} onRefine={handleRefine} loading={loading}/>}</>)}
         {activeTab==="trips"&&(user
           ?<MyTripsScreen trips={trips} onTripClick={handleTripClick} onSummary={handleSummaryClick} onDeleteTrip={deleteTrip} onPlanNew={()=>{setActiveTab("home");setScreen("home");}} destImages={destImages}/>
