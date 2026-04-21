@@ -703,7 +703,9 @@ function BookingScreen({trip,onBack,onDone,onSummary,homeAirport}){
 function SwipeableTrip({t,onTripClick,onDelete}){
   const[offset,setOffset]=useState(0);
   const[deleting,setDeleting]=useState(false);
+  const[undoPending,setUndoPending]=useState(false);
   const startX=React.useRef(null);
+  const undoTimer=React.useRef(null);
   const THRESHOLD=80;
   const DELETE_THRESHOLD=200;
 
@@ -715,8 +717,9 @@ function SwipeableTrip({t,onTripClick,onDelete}){
   };
   const onEnd=()=>{
     if(offset<-DELETE_THRESHOLD){
-      setDeleting(true);
-      onDelete(t.id);
+      setOffset(0);
+      setUndoPending(true);
+      undoTimer.current=setTimeout(()=>{setUndoPending(false);setDeleting(true);onDelete(t.id);},4000);
     } else if(offset<-THRESHOLD){
       setOffset(-THRESHOLD);
     } else {
@@ -724,8 +727,16 @@ function SwipeableTrip({t,onTripClick,onDelete}){
     }
     startX.current=null;
   };
+  const handleUndo=()=>{clearTimeout(undoTimer.current);setUndoPending(false);};
 
   if(deleting)return null;
+
+  if(undoPending)return(
+    <div style={{background:"#c0392b",borderRadius:16,padding:"0.85rem 1rem",display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:"0 2px 12px rgba(28,20,16,0.06)"}}>
+      <span style={{fontSize:"0.85rem",color:C.white,fontFamily:"'DM Sans',sans-serif",fontWeight:500}}>Trip deleted</span>
+      <button onClick={handleUndo} style={{padding:"0.35rem 0.85rem",background:"rgba(255,255,255,0.2)",border:"1px solid rgba(255,255,255,0.4)",borderRadius:20,fontSize:"0.78rem",color:C.white,fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Undo</button>
+    </div>
+  );
 
   return(
     <div style={{position:"relative",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px rgba(28,20,16,0.06)"}}>
@@ -957,7 +968,7 @@ function LandingPage({onCreateAccount,onLogin,onDecide,onStartPlanning}){
             Tell Zirvoy your dream trip and get a full AI-generated plan — flights, hotel, itinerary — in seconds.
           </p>
           <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
-            <Btn onClick={onStartPlanning||onCreateAccount} variant="primary" style={{fontSize:"0.98rem",padding:"1.1rem"}}>Start planning free →</Btn>
+            <Btn onClick={onStartPlanning||onCreateAccount} variant="primary" style={{fontSize:"0.98rem",padding:"1.1rem"}}>Start planning — no sign-up needed →</Btn>
             <div style={{display:"flex",gap:"0.6rem"}}>
               <Btn onClick={onCreateAccount} variant="outline" style={{flex:1,fontSize:"0.88rem",padding:"0.85rem"}}>Sign up</Btn>
               <Btn onClick={onLogin} variant="outline" style={{flex:1,fontSize:"0.88rem",padding:"0.85rem"}}>Log in</Btn>
@@ -1076,7 +1087,7 @@ function TripRevealScreen({trip,onContinue}){
         color:C.sand,padding:"0.35rem 0.9rem",borderRadius:20,fontSize:"0.75rem",fontWeight:500,
         cursor:"pointer",fontFamily:"'DM Sans',sans-serif",
         opacity:faded?0:visible?1:0,transition:"opacity 0.6s ease",pointerEvents:faded?"none":"auto"}}>
-        Skip →
+        View trip →
       </button>
       {/* Phase 2: logo + CTA — fades in */}
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"2rem",
@@ -1095,7 +1106,7 @@ function TripRevealScreen({trip,onContinue}){
 
 function LoadingScreen({input}){
   const[prog,setProg]=useState(0);
-  const steps=["Choosing the perfect destination","Crafting your day-by-day itinerary","Researching flights & hotels","Adding local insider tips"];
+  const steps=["Researching your destination","Crafting your day-by-day itinerary","Researching flights & hotels","Adding local insider tips"];
   const cur=Math.min(Math.floor((prog/100)*steps.length),steps.length-1);
   useEffect(()=>{
     const start=Date.now();const dur=13000;
@@ -1255,6 +1266,7 @@ function DecideModal({onClose,onGenerate,profile}){
   const[step,setStep]=useState(0); // 0 = airport, 1+ = questions
   const[airport,setAirport]=useState(profile?.home_airport||"");
   const[airportQuery,setAirportQuery]=useState(profile?.home_airport||"");
+  const airportPrefilled=!!(profile?.home_airport);
   const[showAirportDropdown,setShowAirportDropdown]=useState(false);
   const[airportFocused,setAirportFocused]=useState(false);
   const[answers,setAnswers]=useState({});
@@ -1304,8 +1316,11 @@ function DecideModal({onClose,onGenerate,profile}){
                 onChange={e=>{setAirportQuery(e.target.value);setAirport(e.target.value);setShowAirportDropdown(true);}}
                 onFocus={()=>{setAirportFocused(true);setShowAirportDropdown(true);}}
                 onBlur={()=>{setAirportFocused(false);setTimeout(()=>setShowAirportDropdown(false),150);}}
-                style={{width:"100%",padding:"0.95rem 1rem",background:C.white,border:`1.5px solid ${airportFocused?C.terracotta:C.border}`,borderRadius:12,fontSize:"1rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif",transition:"border-color 0.2s",boxSizing:"border-box"}}
+                style={{width:"100%",padding:"0.95rem 1rem",background:C.white,border:`1.5px solid ${airportFocused?C.terracotta:airportPrefilled&&!airportFocused?"#81c784":C.border}`,borderRadius:12,fontSize:"1rem",color:C.ink,outline:"none",fontFamily:"'DM Sans',sans-serif",transition:"border-color 0.2s",boxSizing:"border-box"}}
               />
+              {airportPrefilled&&!airportFocused&&!showAirportDropdown&&airport&&(
+                <p style={{fontSize:"0.72rem",color:"#2e7d32",margin:"0.35rem 0 0",fontWeight:500,fontFamily:"'DM Sans',sans-serif"}}>✓ From your profile</p>
+              )}
               {showAirportDropdown&&filteredAirports.length>0&&(
                 <div style={{position:"absolute",top:"100%",left:0,right:0,background:C.white,border:`1px solid ${C.border}`,borderRadius:12,zIndex:50,boxShadow:"0 8px 24px rgba(28,20,16,0.12)",overflow:"hidden",marginTop:4}}>
                   {filteredAirports.map(a=>(
@@ -1517,9 +1532,6 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
         <div style={{position:"absolute",inset:0,background:`linear-gradient(135deg,${C.bark},${C.espresso})`,opacity:imgLoaded?0:1,transition:"opacity 0.8s"}}/>
         <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom,rgba(28,20,16,0.2) 0%,rgba(28,20,16,0.85) 100%)"}}/>
         <div style={{position:"absolute",top:"1.25rem",left:"clamp(1.25rem,5vw,2rem)"}}><ZirvoyLogo light size="sm"/></div>
-        {trip.storySlides?.length>0&&onShowStory&&(
-          <button onClick={onShowStory} style={{position:"absolute",top:"1.25rem",right:"clamp(1.25rem,5vw,2rem)",background:"rgba(28,20,16,0.5)",backdropFilter:"blur(8px)",border:"1px solid rgba(242,232,217,0.25)",color:C.sand,padding:"0.3rem 0.75rem",borderRadius:20,fontSize:"0.72rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",display:"flex",alignItems:"center",gap:"0.35rem"}}>▶ Story</button>
-        )}
         <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"1.5rem clamp(1.25rem,5vw,2rem)"}}>
           <p style={{fontSize:"0.65rem",fontWeight:600,color:C.terra2,letterSpacing:"0.2em",textTransform:"uppercase",margin:"0 0 0.3rem"}}>{trip.country}</p>
           <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"clamp(2.2rem,7vw,3.2rem)",fontWeight:600,color:C.sand,margin:"0 0 0.5rem",lineHeight:1}}>{trip.destination}</h2>
@@ -1650,8 +1662,8 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
           </div>
         )}
 
-        {/* Save — prominent */}
-        {!saved&&(
+        {/* Save — prominent (hide for guests while banner is showing) */}
+        {!saved&&(user||bannerDismissed)&&(
           <button onClick={handleSave} disabled={saving} style={{width:"100%",padding:"1rem",background:C.espresso,color:C.sand,border:"none",borderRadius:12,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.5rem"}}>
             {saving?"Saving…":"Save this trip →"}
           </button>
@@ -1872,7 +1884,7 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
         {/* Booking status chips */}
         <div style={{display:"flex",gap:"0.45rem",flexWrap:"wrap",marginBottom:"1rem"}}>
           {[
-            {label:"Flights",done:!!(trip.isBooked||trip.departDate),icon:"✈"},
+            {label:"Flights",done:!!trip.isBooked,icon:"✈"},
             {label:"Hotel",done:!!trip.isBooked,icon:"🏨"},
             {label:"Transfers",done:!!trip.transfersBooked,icon:"🚗"},
             {label:"Activities",done:!!trip.activitiesBooked,icon:"🎭"},
@@ -1886,7 +1898,7 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
 
         {/* Book trip CTA if not booked */}
         {!trip.isBooked&&onBook&&(
-          <button onClick={onBook} style={{width:"100%",padding:"1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"1rem"}}>Let's Book This Trip →</button>
+          <button onClick={onBook} style={{width:"100%",padding:"1rem",background:C.terracotta,color:C.white,border:"none",borderRadius:12,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"1rem"}}>Find flights & hotels →</button>
         )}
 
         {/* Flight details card */}
@@ -1926,6 +1938,15 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
           )}
         </div>
 
+        {/* Itinerary Builder — near top so users find it quickly */}
+        <div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.25rem",marginBottom:"1rem",boxShadow:"0 2px 16px rgba(28,20,16,0.05)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:"1rem"}}>
+            <div style={{width:3,height:14,background:C.terracotta,borderRadius:2}}/>
+            <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:0}}>Plan your trip · Ask Zirvoy anything</p>
+          </div>
+          <ItineraryBuilder trip={trip} onItineraryChange={handleItineraryChange}/>
+        </div>
+
         {/* Day-by-day itinerary */}
         {trip.itinerary?.length>0&&(
           <div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,overflow:"hidden",marginBottom:"1rem",boxShadow:"0 2px 16px rgba(28,20,16,0.05)"}}>
@@ -1962,15 +1983,6 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
             )}
           </div>
         )}
-
-        {/* Itinerary Builder */}
-        <div style={{background:C.white,borderRadius:18,border:`1px solid ${C.border}`,padding:"1.25rem",marginBottom:"1rem",boxShadow:"0 2px 16px rgba(28,20,16,0.05)"}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:"1rem"}}>
-            <div style={{width:3,height:14,background:C.terracotta,borderRadius:2}}/>
-            <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:0}}>Plan your trip · Ask Zirvoy anything</p>
-          </div>
-          <ItineraryBuilder trip={trip} onItineraryChange={handleItineraryChange}/>
-        </div>
 
         {/* Also worth sorting — expandable tiles */}
         <p style={{fontSize:"0.65rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.14em",margin:"0 0 0.65rem"}}>Also worth sorting</p>
