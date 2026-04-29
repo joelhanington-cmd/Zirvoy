@@ -910,7 +910,7 @@ function AccountScreen({profile,onSignOut,destImages=[],onUpdateProfile}){
         {!editing&&!profile?.passport_number&&(
           <div style={{background:C.parchment,borderRadius:14,padding:"1rem 1.1rem",marginBottom:"1rem",border:`1px solid ${C.border}`}}>
             <p style={{fontSize:"0.8rem",fontWeight:600,color:C.espresso,margin:"0 0 0.25rem"}}>Speed up booking</p>
-            <p style={{fontSize:"0.78rem",color:C.muted,margin:0,lineHeight:1.5,fontWeight:300}}>Add your passport details and we'll pre-fill them when you book.</p>
+            <p style={{fontSize:"0.78rem",color:C.muted,margin:0,lineHeight:1.5,fontWeight:300}}>Stored securely — useful for future in-app booking features.</p>
           </div>
         )}
         <button onClick={onSignOut} style={{width:"100%",padding:"1rem",background:"transparent",color:"#c0392b",border:"1.5px solid #c0392b",borderRadius:14,fontSize:"0.92rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"0.5rem"}}>Sign Out</button>
@@ -969,7 +969,8 @@ function LandingPage({onCreateAccount,onLogin,onDecide,onStartPlanning}){
             Tell Zirvoy your dream trip and get a full AI-generated plan — flights, hotel, itinerary — in seconds.
           </p>
           <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
-            <Btn onClick={onStartPlanning||onCreateAccount} variant="primary" style={{fontSize:"0.98rem",padding:"1.1rem"}}>Start planning — no sign-up needed →</Btn>
+            <Btn onClick={onStartPlanning||onCreateAccount} variant="primary" style={{fontSize:"0.98rem",padding:"1.1rem"}}>Start planning free →</Btn>
+            <p style={{fontSize:"0.72rem",color:"rgba(242,232,217,0.45)",margin:"-0.15rem 0 0",textAlign:"center",fontWeight:300}}>No sign-up needed</p>
             <div style={{display:"flex",gap:"0.6rem"}}>
               <Btn onClick={onCreateAccount} variant="outline" style={{flex:1,fontSize:"0.88rem",padding:"0.85rem"}}>Sign up</Btn>
               <Btn onClick={onLogin} variant="outline" style={{flex:1,fontSize:"0.88rem",padding:"0.85rem"}}>Log in</Btn>
@@ -1105,7 +1106,7 @@ function TripRevealScreen({trip,onContinue}){
   );
 }
 
-function LoadingScreen({input}){
+function LoadingScreen({input,onCancel}){
   const[prog,setProg]=useState(0);
   const[slow,setSlow]=useState(false);
   const steps=["Researching your destination","Crafting your day-by-day itinerary","Researching flights & hotels","Adding local insider tips"];
@@ -1138,6 +1139,7 @@ function LoadingScreen({input}){
         <div style={{height:"100%",width:`${prog}%`,background:`linear-gradient(90deg,${C.terracotta},${C.gold})`,borderRadius:2,transition:"width 0.12s linear"}}/>
       </div>
       {slow&&<p style={{marginTop:"1.5rem",fontSize:"0.78rem",color:"rgba(242,232,217,0.4)",fontWeight:300,textAlign:"center",maxWidth:240}}>Taking a little longer than usual — still working on it…</p>}
+      {onCancel&&<button onClick={onCancel} style={{marginTop:"1.25rem",background:"transparent",border:"1px solid rgba(242,232,217,0.18)",borderRadius:20,padding:"0.4rem 1.1rem",fontSize:"0.75rem",color:"rgba(242,232,217,0.38)",cursor:"pointer",fontFamily:"'DM Sans',sans-serif"}}>Cancel</button>}
     </div>
   );
 }
@@ -1274,6 +1276,7 @@ function DecideModal({onClose,onGenerate,profile}){
   const[showAirportDropdown,setShowAirportDropdown]=useState(false);
   const[airportFocused,setAirportFocused]=useState(false);
   const[answers,setAnswers]=useState({});
+  const[generating,setGenerating]=useState(false);
 
   const filteredAirports=airportQuery.length>0
     ?AIRPORTS.filter(a=>a.toLowerCase().includes(airportQuery.toLowerCase())).slice(0,6)
@@ -1288,14 +1291,24 @@ function DecideModal({onClose,onGenerate,profile}){
     if(step<totalSteps-1){setStep(step+1);}
     else{
       const req=`I want to go to ${a.type}, ${a.flight}, the vibe should be ${a.vibe}, travelling as ${a.who}, with ${a.budget}, going ${a.when||"whenever suits best"}. I am flying from ${airport}. Build me the perfect trip.`;
-      onClose();
-      onGenerate(req);
+      setGenerating(true);
+      setTimeout(()=>{onClose();onGenerate(req);},600);
     }
   };
 
   const currentQ=step>0?questions[step-1]:null;
   const isAirportStep=step===0;
   const airportValid=airport.trim().length>0;
+
+  if(generating)return(
+    <div style={{position:"fixed",inset:0,background:"rgba(28,20,16,0.75)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
+      <div style={{width:"100%",maxWidth:640,background:C.espresso,borderRadius:"22px 22px 0 0",padding:"2.5rem 1.5rem 3rem",textAlign:"center"}}>
+        <div style={{animation:"pulse 1.5s ease-in-out infinite",marginBottom:"1rem"}}><ZirvoyMark size={40} color={C.terracotta}/></div>
+        <p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.3rem",color:C.sand,margin:"0 0 0.35rem"}}>Building your trip…</p>
+        <p style={{fontSize:"0.8rem",color:"rgba(242,232,217,0.45)",margin:0,fontWeight:300}}>Finding the perfect destination</p>
+      </div>
+    </div>
+  );
 
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(28,20,16,0.75)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center",fontFamily:"'DM Sans',sans-serif"}}>
@@ -1371,7 +1384,7 @@ function DecideModal({onClose,onGenerate,profile}){
   );
 }
 
-function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,onViewTrips,loading,destImages=[]}){
+function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,onViewTrips,loading,destImages=[],currentTrip,onResumeTrip}){
   const[input,setInput]=useState("");
   const[focused,setFocused]=useState(false);
   const firstName=profile?.first_name||null;
@@ -1398,6 +1411,19 @@ function HomeScreen({user,profile,trips,onGenerate,onDecide,onTripClick,onViewTr
       </CyclingHeader>
 
       <div style={{maxWidth:640,margin:"0 auto",padding:"1.5rem 1.5rem"}}>
+
+        {/* Resume card — shown when a trip is in state but user navigated back */}
+        {currentTrip&&onResumeTrip&&(
+          <button onClick={onResumeTrip} style={{width:"100%",display:"flex",alignItems:"center",gap:"0.85rem",background:C.white,border:`1.5px solid ${C.terracotta}`,borderRadius:16,padding:"0.75rem",marginBottom:"1.25rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",textAlign:"left",boxShadow:"0 2px 16px rgba(196,98,45,0.12)"}}>
+            {currentTrip.photo&&<img src={currentTrip.photo} alt={currentTrip.destination} style={{width:52,height:52,borderRadius:10,objectFit:"cover",flexShrink:0}}/>}
+            <div style={{flex:1,minWidth:0}}>
+              <p style={{fontSize:"0.62rem",fontWeight:600,color:C.terracotta,textTransform:"uppercase",letterSpacing:"0.1em",margin:"0 0 0.15rem"}}>Resume trip</p>
+              <p style={{fontFamily:"'Cormorant Garamond',serif",fontSize:"1.05rem",fontWeight:600,color:C.espresso,margin:0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{currentTrip.destination}, {currentTrip.country}</p>
+              <p style={{fontSize:"0.72rem",color:C.muted,margin:"0.1rem 0 0",fontWeight:300}}>{currentTrip.duration} nights · £{fmt(currentTrip.budgetTotal)}</p>
+            </div>
+            <span style={{color:C.terracotta,fontSize:"1.1rem",flexShrink:0}}>→</span>
+          </button>
+        )}
 
         {/* Quick-start chips — fastest path */}
         <p style={{fontSize:"0.68rem",fontWeight:600,color:C.muted,textTransform:"uppercase",letterSpacing:"0.12em",margin:"0 0 0.65rem"}}>Jump-start your trip</p>
@@ -1689,9 +1715,8 @@ function ResultsScreen({trip:initialTrip,onNewTrip,onTryAgain,onLetsBook,onSaveT
         </div>
         {!shareUrl&&<p style={{fontSize:"0.72rem",color:C.muted,margin:"0 0 0.75rem",textAlign:"center",fontWeight:300}}>💡 Save your trip to generate a shareable link</p>}
 
-        {/* Refine + reset */}
-        <button onClick={onTryAgain} style={{width:"100%",padding:"0.5rem",background:"transparent",color:C.muted,border:"none",fontSize:"0.82rem",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"0.25rem",marginBottom:"0.5rem"}}>Try a completely different trip →</button>
-        <button onClick={onNewTrip} style={{width:"100%",padding:"0.9rem",background:"transparent",color:!user&&!saved?"#c0392b":C.muted,border:`1px solid ${!user&&!saved?"#c0392b":C.border}`,borderRadius:14,fontSize:"0.85rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginBottom:"0.75rem"}}>
+        {/* Reset */}
+        <button onClick={onNewTrip} style={{width:"100%",padding:"0.9rem",background:"transparent",color:!user&&!saved?"#c0392b":C.muted,border:`1px solid ${!user&&!saved?"#c0392b":C.border}`,borderRadius:14,fontSize:"0.85rem",fontWeight:500,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",marginTop:"0.5rem",marginBottom:"0.75rem"}}>
           {!user&&!saved?"Start over — this trip will be lost":"Plan Another Trip"}
         </button>
       </div>
@@ -1870,6 +1895,8 @@ function TripSummaryScreen({trip:initialTrip,onBack,onBook,onTripUpdate}){
 
   return(
     <div style={{minHeight:"100vh",background:C.sandLight,fontFamily:"'DM Sans',sans-serif",paddingBottom:100}}>
+      {/* Floating back button — stays visible when scrolled */}
+      <button onClick={onBack} style={{position:"fixed",bottom:"calc(1.5rem + env(safe-area-inset-bottom))",right:"1.25rem",zIndex:60,background:C.espresso,color:C.sand,border:"none",borderRadius:24,padding:"0.6rem 1.1rem",fontSize:"0.8rem",fontWeight:600,cursor:"pointer",fontFamily:"'DM Sans',sans-serif",boxShadow:"0 4px 20px rgba(28,20,16,0.28)",display:"flex",alignItems:"center",gap:"0.4rem"}}>← Back</button>
       {/* Hero */}
       <div style={{position:"relative",height:"min(280px,45vw)",minHeight:220,overflow:"hidden"}}>
         {trip.photo&&<img src={trip.photo} alt={trip.destination} style={{width:"100%",height:"100%",objectFit:"cover",filter:"brightness(0.78)"}}/>}
@@ -2175,6 +2202,8 @@ export default function Home(){
     }catch(e){}
   },[trip,tripSaved,savedTripId,originalRequest,showSummary]);
 
+  const abortRef=useRef(null);
+
   // Intercept browser back button to navigate within the app
   const _backRef=useRef({});
   useEffect(()=>{_backRef.current={trip,showBooking,showSummary,showReveal};},[trip,showBooking,showSummary,showReveal]);
@@ -2242,10 +2271,13 @@ export default function Home(){
   const handleSignOut=async()=>{await supabase.auth.signOut();setUser(null);setProfile(null);setTrips([]);setAuthScreen("splash");setScreen("home");setTrip(null);setActiveTab("home");};
 
   const generate=async(request)=>{
+    if(abortRef.current)abortRef.current.abort();
+    const controller=new AbortController();
+    abortRef.current=controller;
     setLoading(true);setError(null);setScreen("results");setShowRefine(false);
     setTripSaved(false);setSavedTripId(null);setShowStory(false);setShowBooking(false);setActiveTab("home");
     try{
-      const res=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({request})});
+      const res=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({request}),signal:controller.signal});
       const data=await res.json();
       if(!res.ok||!data.trip)throw new Error(data.error||"Something went wrong");
       setTrip(data.trip);
@@ -2253,9 +2285,13 @@ export default function Home(){
       setShowReveal(true);
       // Auto-save trip
       if(user){const saved=await saveTrip(user.id,data.trip);if(saved)setTripSaved(true);}
-    }catch(e){setError(e.message);setScreen("home");}
+    }catch(e){
+      if(e.name==="AbortError")return;
+      setError(e.message);setScreen("home");
+    }
     finally{setLoading(false);}
   };
+  const handleCancelGenerate=()=>{if(abortRef.current)abortRef.current.abort();setLoading(false);setScreen("home");};
 
   const handleManualSave=async()=>{
     if(!trip)return;
@@ -2323,7 +2359,7 @@ export default function Home(){
       {showAuthPrompt&&<AuthPromptModal reason={authPromptAction} onClose={()=>setShowAuthPrompt(false)} onSignUp={()=>{setShowAuthPrompt(false);setAuthScreen("signup");}} onLogin={()=>{setShowAuthPrompt(false);setAuthScreen("login");}}/>}
 
       {/* Full loading screen only on fresh generation (no existing trip in state) */}
-      {loading&&!trip&&<LoadingScreen input={originalRequest}/>}
+      {loading&&!trip&&<LoadingScreen input={originalRequest} onCancel={handleCancelGenerate}/>}
 
       {/* Trip reveal — smooth landing after generation */}
       {!loading&&trip&&showReveal&&<TripRevealScreen trip={trip} onContinue={()=>{setShowReveal(false);}}/>}
@@ -2344,7 +2380,7 @@ export default function Home(){
       )}
 
       {!(showStory&&screen==="results")&&!showBooking&&!showSummary&&(<>
-        {activeTab==="home"&&screen==="home"&&<HomeScreen user={user} profile={profile} trips={trips} onGenerate={handleGenerate} onDecide={()=>setShowDecide(true)} onTripClick={handleTripClick} onViewTrips={user?()=>setActiveTab("trips"):undefined} loading={loading} destImages={destImages}/>}
+        {activeTab==="home"&&screen==="home"&&<HomeScreen user={user} profile={profile} trips={trips} onGenerate={handleGenerate} onDecide={()=>setShowDecide(true)} onTripClick={handleTripClick} onViewTrips={user?()=>setActiveTab("trips"):undefined} loading={loading} destImages={destImages} currentTrip={trip} onResumeTrip={()=>setScreen("results")}/>}
         {showDecide&&<DecideModal onClose={()=>setShowDecide(false)} onGenerate={handleGenerate} profile={profile}/>}
         {activeTab==="home"&&screen==="results"&&trip&&(<><ResultsScreen trip={trip} onNewTrip={handleNewTrip} onBack={()=>setScreen("home")} onTryAgain={()=>setShowRefine(true)} onLetsBook={handleLetsBook} onSaveTrip={handleManualSave} isSaved={tripSaved} onShowStory={trip.storySlides?.length>0?()=>setShowStory(true):undefined} onPlanTrip={handleOpenSummary} tripId={savedTripId} user={user}/>{showRefine&&<RefineModal destination={trip.destination} onClose={()=>setShowRefine(false)} onRefine={handleRefine} loading={loading}/>}</>)}
         {activeTab==="trips"&&(user
